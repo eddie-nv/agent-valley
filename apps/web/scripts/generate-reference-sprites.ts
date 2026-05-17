@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import type { SpriteRow } from "@agent-valley/domain";
 
 type Palette = {
   hair: string;
@@ -9,15 +10,8 @@ type Palette = {
   accent: string;
 };
 
-type Activity =
-  | "walk-down"
-  | "walk-side"
-  | "typing"
-  | "whiteboard"
-  | "meeting"
-  | "game"
-  | "kitchen"
-  | "ready";
+// Sheet rows are a pure render concern; the union is owned by @agent-valley/domain.
+type Activity = SpriteRow;
 
 type PropName =
   | "desk"
@@ -65,6 +59,7 @@ const agentRows: Array<{ label: string; activity: Activity }> = [
   { label: "Typing", activity: "typing" },
   { label: "Whiteboard", activity: "whiteboard" },
   { label: "Meeting", activity: "meeting" },
+  { label: "Researching", activity: "research" },
   { label: "Game room idle", activity: "game" },
   { label: "Kitchen idle", activity: "kitchen" },
   { label: "Ready/present", activity: "ready" }
@@ -180,6 +175,15 @@ function drawAgent(x: number, y: number, activity: Activity, frame: number, pale
     parts.push(rect(bodyX + 8, bodyY + 21 - Math.max(0, swing * 3), 14, 5, palette.skin));
     parts.push(rect(bodyX + 20, bodyY + 14 - Math.max(0, swing * 3), 3, 11, "#dce2dd"));
     parts.push(circle(bodyX, bodyY + 33, 5, "#f4c76b"));
+  } else if (activity === "research") {
+    parts.push(rect(bodyX - 20, bodyY + 19, 11, 5, palette.skin));
+    parts.push(rect(bodyX + 9, bodyY + 19, 11, 5, palette.skin));
+    parts.push(rect(bodyX - 13, bodyY + 16, 26, 18, palette.accent));
+    parts.push(rect(bodyX - 11, bodyY + 18, 11, 14, "#fff2cf"));
+    parts.push(rect(bodyX + 1, bodyY + 18, 11, 14, "#fff2cf"));
+    parts.push(rect(bodyX, bodyY + 18, 1, 14, "#d7c89e"));
+    parts.push(rect(bodyX - 8, bodyY + 21 + (step % 2), 7, 1, "#282f2c", 0.5));
+    parts.push(rect(bodyX + 3, bodyY + 24 - (step % 2), 7, 1, "#282f2c", 0.5));
   } else if (activity === "ready") {
     parts.push(rect(bodyX - 24, bodyY + 18, 12, 5, palette.skin));
     parts.push(rect(bodyX + 12, bodyY + 18, 12, 5, palette.skin));
@@ -522,9 +526,10 @@ This folder contains deterministic base-reference sprite sheets for the current 
   3. typing at computer
   4. working on whiteboard
   5. having a meeting
-  6. playing in game room
-  7. eating in kitchen
-  8. ready / presenting
+  6. researching with a book
+  7. playing in game room
+  8. eating in kitchen
+  9. ready / presenting
 
 ## Environment Sheet
 

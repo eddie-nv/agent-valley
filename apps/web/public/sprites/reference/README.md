@@ -20,9 +20,10 @@ This folder contains deterministic base-reference sprite sheets for the current 
   3. typing at computer
   4. working on whiteboard
   5. having a meeting
-  6. playing in game room
-  7. eating in kitchen
-  8. ready / presenting
+  6. researching with a book
+  7. playing in game room
+  8. eating in kitchen
+  9. ready / presenting
 
 ## Environment Sheet
 

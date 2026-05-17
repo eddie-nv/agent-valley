@@ -1,5 +1,6 @@
 import { Application } from "pixi.js";
 import { createOfficeWorld } from "./office-world";
+import { createSpriteScene } from "./sprite-scene/sprite-scene";
 import "./styles.css";
 
 const app = document.querySelector<HTMLDivElement>("#app");
@@ -20,4 +21,11 @@ await pixi.init({
 
 app.append(pixi.canvas);
 
-createOfficeWorld(pixi);
+// `?scene=office` shows the procedural prototype; default is the sprite scene.
+const scene = new URLSearchParams(window.location.search).get("scene");
+
+if (scene === "office") {
+  createOfficeWorld(pixi);
+} else {
+  await createSpriteScene(pixi);
+}

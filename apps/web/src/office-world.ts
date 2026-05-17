@@ -1,4 +1,5 @@
 import { Application, Container, Graphics, Rectangle, Text, type TextStyleOptions, type Ticker } from "pixi.js";
+import { activityLabel, type WorkerActivity, type AgentPalette, type Facing } from "@agent-valley/domain";
 
 const WORLD_WIDTH = 1280;
 const WORLD_HEIGHT = 720;
@@ -17,19 +18,9 @@ const PRESENTATION_START = 38;
 const PRESENTATION_END = 52;
 const LOOP_SECONDS = 62;
 
-type Activity = "typing" | "whiteboard" | "meeting" | "game" | "kitchen" | "walking" | "ready";
-
 interface Point {
   x: number;
   y: number;
-}
-
-interface AgentPalette {
-  hair: number;
-  skin: number;
-  shirt: number;
-  pants: number;
-  accent: number;
 }
 
 interface AgentDefinition {
@@ -38,14 +29,14 @@ interface AgentDefinition {
   spawn: Point;
   station: Point;
   boardroom: Point;
-  activity: Exclude<Activity, "walking" | "ready">;
+  activity: Exclude<WorkerActivity, "walking" | "ready">;
   laneOffset: number;
   thoughts: string[];
 }
 
 interface AgentFrame {
-  activity: Activity;
-  facing: "left" | "right" | "down";
+  activity: WorkerActivity;
+  facing: Facing;
   position: Point;
   bubble?: string;
 }
@@ -908,20 +899,6 @@ function drawMiniAgent(g: Graphics, x: number, y: number, palette: AgentPalette,
   g.addChild(mini);
 }
 
-function activityLabel(activity: Activity): string {
-  const labels: Record<Activity, string> = {
-    game: "Playing in the game room",
-    kitchen: "Eating in the kitchen",
-    meeting: "Having a meeting",
-    ready: "Ready to present",
-    typing: "Typing at the computer",
-    walking: "Walking to the next room",
-    whiteboard: "Working on the whiteboard"
-  };
-
-  return labels[activity];
-}
-
 function drawRoom(g: Graphics, x: number, y: number, width: number, height: number, floor: number, label: string): void {
   g.rect(x - 8, y - 8, width + 16, height + 16).fill({ color: colors.wallDark });
   g.rect(x, y, width, height).fill({ color: floor });
@@ -1150,7 +1127,7 @@ function drawFileCard(g: Graphics, x: number, y: number, filename: string, descr
   g.addChild(descText);
 }
 
-function drawAgentShadow(g: Graphics, activity: Activity, time: number): void {
+function drawAgentShadow(g: Graphics, activity: WorkerActivity, time: number): void {
   g.clear();
   const width = activity === "walking" ? 28 + Math.sin(time * 10) * 2 : 30;
   g.ellipse(0, 0, width, 9).fill({ color: colors.shadow, alpha: 0.28 });
@@ -1159,8 +1136,8 @@ function drawAgentShadow(g: Graphics, activity: Activity, time: number): void {
 function drawAgentSprite(
   g: Graphics,
   palette: AgentPalette,
-  activity: Activity,
-  facing: "left" | "right" | "down",
+  activity: WorkerActivity,
+  facing: Facing,
   time: number
 ): void {
   g.clear();
@@ -1227,7 +1204,7 @@ function thoughtFor(agent: AgentDefinition, time: number): string {
   return agent.thoughts[thoughtIndex] ?? agent.thoughts[0] ?? "thinking";
 }
 
-function facingFor(activity: Activity, index: number): "left" | "right" | "down" {
+function facingFor(activity: WorkerActivity, index: number): Facing {
   if (activity === "whiteboard") {
     return "right";
   }
@@ -1239,7 +1216,7 @@ function facingFor(activity: Activity, index: number): "left" | "right" | "down"
   return "down";
 }
 
-function floatPoint(point: Point, time: number, activity: Activity, index: number): Point {
+function floatPoint(point: Point, time: number, activity: WorkerActivity, index: number): Point {
   const amount = activity === "typing" || activity === "whiteboard" || activity === "meeting" ? 1.2 : 0.7;
 
   return {

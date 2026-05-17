@@ -100,3 +100,6 @@ export interface ValleySnapshot {
   reviewQueue: ReviewPacket[];
   pool: PoolHealth;
 }
+
+// Render-only sprite mapping for the Pixi web client (consumes WorkerActivity).
+export * from "./sprite";
