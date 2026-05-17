@@ -13,7 +13,7 @@ const pixi = new Application();
 await pixi.init({
   antialias: false,
   autoDensity: true,
-  background: "#101614",
+  background: "#d8d4d6",
   resolution: window.devicePixelRatio || 1,
   resizeTo: window
 });
