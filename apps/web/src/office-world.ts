@@ -290,10 +290,10 @@ class OfficeWorld {
     this.gameFrameLayer.addChild(game);
 
     drawTileFloor(shell, 0, 0, WORLD_WIDTH, WORLD_HEIGHT, t.colors.ui.shellTileA, t.colors.ui.shellTileB);
-    shell.rect(0, 0, WORLD_WIDTH, WORLD_HEIGHT).fill({ color: t.colors.ui.shellOverlay, alpha: 0.34 });
+    shell.rect(0, 0, WORLD_WIDTH, WORLD_HEIGHT).fill({ color: t.colors.ui.shellOverlay, alpha: 0.08 });
 
-    drawPixelPanel(shell, CHAT_X, CHAT_Y, CHAT_WIDTH, CHAT_HEIGHT, t.colors.ui.chatPanelPaper, t.colors.ui.chatPanelShade, t.colors.ui.chatPanelAccent);
-    drawPixelPanel(game, GAME_X, GAME_Y, GAME_WIDTH, GAME_HEIGHT, t.colors.ui.gamePanelPaper, t.colors.ui.gamePanelShade, t.colors.ui.gamePanelAccent);
+    drawPixelPanel(shell, CHAT_X, CHAT_Y, CHAT_WIDTH, CHAT_HEIGHT);
+    drawPixelPanel(game, GAME_X, GAME_Y, GAME_WIDTH, GAME_HEIGHT);
 
     game.rect(GAME_X + 14, GAME_Y + 14, GAME_WIDTH - 28, 42).fill({ color: t.colors.ui.gameHeaderOuter });
     game.rect(GAME_X + 18, GAME_Y + 18, GAME_WIDTH - 36, 34).fill({ color: t.colors.ui.gameHeaderInner });
@@ -345,7 +345,7 @@ class OfficeWorld {
       );
     });
 
-    drawPixelPanel(panel, CHAT_X + 18, CHAT_Y + 290, CHAT_WIDTH - 36, 392, t.colors.ui.chatSubpanelPaper, t.colors.ui.chatSubpanelShade, t.colors.ui.chatSubpanelAccent);
+    drawPixelPanel(panel, CHAT_X + 18, CHAT_Y + 290, CHAT_WIDTH - 36, 392);
     const status = this.agentStatuses.get(this.activeTab);
 
     if (this.activeTab !== "chief" && status && taskRunning) {
@@ -467,7 +467,7 @@ class OfficeWorld {
     const x = clamp(anchorX - 88, GAME_X + 16, GAME_X + GAME_WIDTH - 240);
     const y = clamp(anchorY - 152, GAME_Y + 76, GAME_Y + GAME_HEIGHT - 166);
 
-    drawPixelPanel(g, x, y, 224, 132, t.colors.ui.hoverPopupPaper, t.colors.ui.hoverPopupShade, status.agent.palette.shirt);
+    drawPixelPanel(g, x, y, 224, 132);
     addText(popup, status.agent.name.toUpperCase(), x + 18, y + 18, {
       ...t.textStyles.uiSmall,
       fill: t.colors.text.heading
@@ -791,17 +791,13 @@ function drawPixelPanel(
   y: number,
   width: number,
   height: number,
-  paper: number,
-  shade: number,
-  accent: number
 ): void {
+  // Outer border (deep outline)
   g.rect(x, y, width, height).fill({ color: t.colors.ui.panelOuterBorder });
-  g.rect(x + 5, y + 5, width - 10, height - 10).fill({ color: paper });
-  g.rect(x + 10, y + 10, width - 20, height - 20).fill({ color: shade });
-  g.rect(x + 10, y + 10, width - 20, 5).fill({ color: accent });
-  g.rect(x + 10, y + height - 15, width - 20, 5).fill({ color: t.colors.ui.panelInnerBorder });
-  g.rect(x + 10, y + 10, 5, height - 20).fill({ color: t.colors.ui.panelInnerBorder });
-  g.rect(x + width - 15, y + 10, 5, height - 20).fill({ color: t.colors.ui.panelInnerBorder });
+  // Inner border
+  g.rect(x + 4, y + 4, width - 8, height - 8).fill({ color: t.colors.ui.panelInnerBorder });
+  // Panel fill
+  g.rect(x + 8, y + 8, width - 16, height - 16).fill({ color: t.colors.ui.chatPanelShade });
 }
 
 function drawMiniAgent(g: Graphics, x: number, y: number, palette: AgentPalette, time: number): void {
