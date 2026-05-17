@@ -1,4 +1,7 @@
 import { Application, Container, Graphics, Rectangle, Text, type TextStyleOptions, type Ticker } from "pixi.js";
+import { theme } from "./theme";
+
+const t = theme;
 
 const WORLD_WIDTH = 1280;
 const WORLD_HEIGHT = 720;
@@ -54,33 +57,6 @@ interface AgentStatus {
   agent: AgentDefinition;
   frame: AgentFrame;
 }
-
-const colors = {
-  wall: 0x3d2f28,
-  wallDark: 0x231a18,
-  trim: 0x6a5947,
-  floorA: 0xb78b5b,
-  floorB: 0xc69a67,
-  carpetA: 0x617c63,
-  carpetB: 0x78916d,
-  kitchenTileA: 0xd8d3bd,
-  kitchenTileB: 0xcfc6aa,
-  desk: 0x8f5b3e,
-  deskTop: 0xb9794d,
-  monitor: 0x22334b,
-  monitorGlow: 0x9bd6ff,
-  board: 0xe8eee6,
-  boardStroke: 0x6b7a75,
-  glass: 0x88c4d4,
-  shadow: 0x221b16,
-  ink: 0x282f2c,
-  cream: 0xfff2cf,
-  leaf: 0x548a4f,
-  red: 0xc9514d,
-  blue: 0x446ab3,
-  yellow: 0xf4c76b,
-  purple: 0x8d639e
-};
 
 const agents: AgentDefinition[] = [
   {
@@ -144,71 +120,6 @@ const agents: AgentDefinition[] = [
     thoughts: ["update readme", "clean diff", "small PR"]
   }
 ];
-
-const textStyles = {
-  plaque: {
-    fontFamily: "\"Courier New\", monospace",
-    fontSize: 11,
-    fontWeight: "700",
-    fill: colors.cream,
-    letterSpacing: 1
-  },
-  smallDark: {
-    fontFamily: "\"Courier New\", monospace",
-    fontSize: 12,
-    fontWeight: "700",
-    fill: colors.ink
-  },
-  bubble: {
-    fontFamily: "\"Courier New\", monospace",
-    fontSize: 10,
-    fontWeight: "700",
-    fill: colors.ink,
-    wordWrap: true,
-    wordWrapWidth: 128
-  },
-  presentationTitle: {
-    fontFamily: "\"Courier New\", monospace",
-    fontSize: 34,
-    fontWeight: "700",
-    fill: 0xfff2cf
-  },
-  presentationBody: {
-    fontFamily: "\"Courier New\", monospace",
-    fontSize: 18,
-    fontWeight: "700",
-    fill: 0xdfe9d8
-  },
-  uiTiny: {
-    fontFamily: "\"Courier New\", monospace",
-    fontSize: 10,
-    fontWeight: "700",
-    fill: 0xfff2cf,
-    letterSpacing: 1
-  },
-  uiSmall: {
-    fontFamily: "\"Courier New\", monospace",
-    fontSize: 13,
-    fontWeight: "700",
-    fill: 0xfff2cf
-  },
-  uiBody: {
-    fontFamily: "\"Courier New\", monospace",
-    fontSize: 15,
-    fontWeight: "700",
-    fill: 0xfff2cf,
-    lineHeight: 23,
-    wordWrap: true,
-    wordWrapWidth: 260
-  },
-  uiTitle: {
-    fontFamily: "\"Courier New\", monospace",
-    fontSize: 20,
-    fontWeight: "700",
-    fill: 0xfff2cf,
-    stroke: { color: 0x24335c, width: 4 }
-  }
-} as const;
 
 export function createOfficeWorld(app: Application): void {
   const world = new OfficeWorld(app);
@@ -378,25 +289,25 @@ class OfficeWorld {
     this.shellLayer.addChild(shell);
     this.gameFrameLayer.addChild(game);
 
-    drawTileFloor(shell, 0, 0, WORLD_WIDTH, WORLD_HEIGHT, 0x172d46, 0x1c3852);
-    shell.rect(0, 0, WORLD_WIDTH, WORLD_HEIGHT).fill({ color: 0x061526, alpha: 0.34 });
+    drawTileFloor(shell, 0, 0, WORLD_WIDTH, WORLD_HEIGHT, t.colors.ui.shellTileA, t.colors.ui.shellTileB);
+    shell.rect(0, 0, WORLD_WIDTH, WORLD_HEIGHT).fill({ color: t.colors.ui.shellOverlay, alpha: 0.34 });
 
-    drawPixelPanel(shell, CHAT_X, CHAT_Y, CHAT_WIDTH, CHAT_HEIGHT, 0xf7e6a8, 0x1c3852, 0x2f6fab);
-    drawPixelPanel(game, GAME_X, GAME_Y, GAME_WIDTH, GAME_HEIGHT, 0xf7e6a8, 0x1e493d, 0xd4494c);
+    drawPixelPanel(shell, CHAT_X, CHAT_Y, CHAT_WIDTH, CHAT_HEIGHT, t.colors.ui.chatPanelPaper, t.colors.ui.chatPanelShade, t.colors.ui.chatPanelAccent);
+    drawPixelPanel(game, GAME_X, GAME_Y, GAME_WIDTH, GAME_HEIGHT, t.colors.ui.gamePanelPaper, t.colors.ui.gamePanelShade, t.colors.ui.gamePanelAccent);
 
-    game.rect(GAME_X + 14, GAME_Y + 14, GAME_WIDTH - 28, 42).fill({ color: 0x274f79 });
-    game.rect(GAME_X + 18, GAME_Y + 18, GAME_WIDTH - 36, 34).fill({ color: 0x1a365d });
-    addText(game, "AGENT VALLEY OFFICE", GAME_X + 34, GAME_Y + 24, textStyles.uiTitle);
+    game.rect(GAME_X + 14, GAME_Y + 14, GAME_WIDTH - 28, 42).fill({ color: t.colors.ui.gameHeaderOuter });
+    game.rect(GAME_X + 18, GAME_Y + 18, GAME_WIDTH - 36, 34).fill({ color: t.colors.ui.gameHeaderInner });
+    addText(game, "AGENT VALLEY OFFICE", GAME_X + 34, GAME_Y + 24, t.textStyles.uiTitle);
     addText(game, this.isTaskRunning(time) ? "TASK RUNNING" : "WAITING FOR ORDERS", GAME_X + GAME_WIDTH - 214, GAME_Y + 30, {
-      ...textStyles.uiTiny,
-      fill: this.isTaskRunning(time) ? 0x8ef7a6 : 0xffd37b
+      ...t.textStyles.uiTiny,
+      fill: this.isTaskRunning(time) ? t.colors.text.statusActive : t.colors.text.statusWaiting
     });
 
-    const blink = Math.floor(time * 2) % 2 === 0 ? 0xfff2cf : 0xffd37b;
+    const blink = Math.floor(time * 2) % 2 === 0 ? t.colors.headerBlinkA : t.colors.headerBlinkB;
     game.rect(GAME_X + GAME_WIDTH - 40, GAME_Y + 28, 12, 12).fill({ color: blink });
     game.rect(GAME_X + GAME_INSET, GAME_Y + GAME_HEADER_HEIGHT + GAME_INSET, GAME_WIDTH - GAME_INSET * 2, GAME_HEIGHT - GAME_HEADER_HEIGHT - GAME_INSET * 2)
-      .stroke({ color: 0x0d1627, width: 5 })
-      .stroke({ color: 0xf7e6a8, width: 2 });
+      .stroke({ color: t.colors.ui.gameViewportStrokeOuter, width: 5 })
+      .stroke({ color: t.colors.ui.gameViewportStrokeInner, width: 2 });
   }
 
   private drawChat(time: number): void {
@@ -405,16 +316,16 @@ class OfficeWorld {
     this.chatLayer.addChild(panel);
 
     const taskRunning = this.isTaskRunning(time);
-    panel.rect(CHAT_X + 16, CHAT_Y + 16, CHAT_WIDTH - 32, 74).fill({ color: 0x1a365d });
-    panel.rect(CHAT_X + 24, CHAT_Y + 24, 58, 58).fill({ color: 0xf7e6a8 });
-    panel.rect(CHAT_X + 32, CHAT_Y + 34, 42, 28).fill({ color: 0x24335c });
-    panel.rect(CHAT_X + 40, CHAT_Y + 42, 8, 8).fill({ color: 0x8ef7a6 });
-    panel.rect(CHAT_X + 58, CHAT_Y + 42, 8, 8).fill({ color: 0x8ef7a6 });
-    panel.rect(CHAT_X + 42, CHAT_Y + 64, 22, 4).fill({ color: 0xd4494c });
-    addText(panel, "CHIEF OF STAFF", CHAT_X + 96, CHAT_Y + 28, textStyles.uiSmall);
+    panel.rect(CHAT_X + 16, CHAT_Y + 16, CHAT_WIDTH - 32, 74).fill({ color: t.colors.ui.chatAvatarBg });
+    panel.rect(CHAT_X + 24, CHAT_Y + 24, 58, 58).fill({ color: t.colors.ui.chatAvatarFrame });
+    panel.rect(CHAT_X + 32, CHAT_Y + 34, 42, 28).fill({ color: t.colors.ui.chatAvatarFace });
+    panel.rect(CHAT_X + 40, CHAT_Y + 42, 8, 8).fill({ color: t.colors.ui.chatAvatarEyes });
+    panel.rect(CHAT_X + 58, CHAT_Y + 42, 8, 8).fill({ color: t.colors.ui.chatAvatarEyes });
+    panel.rect(CHAT_X + 42, CHAT_Y + 64, 22, 4).fill({ color: t.colors.ui.chatAvatarMouth });
+    addText(panel, "CHIEF OF STAFF", CHAT_X + 96, CHAT_Y + 28, t.textStyles.uiSmall);
     addText(panel, taskRunning ? "Crew is executing." : "Awaiting a task.", CHAT_X + 96, CHAT_Y + 53, {
-      ...textStyles.uiTiny,
-      fill: taskRunning ? 0x8ef7a6 : 0xffd37b
+      ...t.textStyles.uiTiny,
+      fill: taskRunning ? t.colors.text.statusActive : t.colors.text.statusWaiting
     });
 
     this.drawTab(panel, "chief", "CHIEF", CHAT_X + 18, CHAT_Y + 108, CHAT_WIDTH - 36, this.activeTab === "chief", true);
@@ -434,7 +345,7 @@ class OfficeWorld {
       );
     });
 
-    drawPixelPanel(panel, CHAT_X + 18, CHAT_Y + 290, CHAT_WIDTH - 36, 392, 0xfff2cf, 0x1a365d, 0x2f6fab);
+    drawPixelPanel(panel, CHAT_X + 18, CHAT_Y + 290, CHAT_WIDTH - 36, 392, t.colors.ui.chatSubpanelPaper, t.colors.ui.chatSubpanelShade, t.colors.ui.chatSubpanelAccent);
     const status = this.agentStatuses.get(this.activeTab);
 
     if (this.activeTab !== "chief" && status && taskRunning) {
@@ -454,16 +365,16 @@ class OfficeWorld {
     active: boolean,
     enabled: boolean
   ): void {
-    const fill = active ? 0xffd37b : enabled ? 0x2f6fab : 0x314053;
-    const stroke = active ? 0xd4494c : 0xf7e6a8;
+    const fill = active ? t.colors.ui.tabActiveFill : enabled ? t.colors.ui.tabEnabledFill : t.colors.ui.tabDisabledFill;
+    const stroke = active ? t.colors.ui.tabActiveStroke : t.colors.ui.tabEnabledStroke;
     const tab = new Container();
     const g = new Graphics();
     tab.addChild(g);
-    g.rect(x, y, width, 30).fill({ color: 0x0d1627 });
+    g.rect(x, y, width, 30).fill({ color: t.colors.ui.tabBackground });
     g.rect(x + 4, y + 4, width - 8, 22).fill({ color: fill }).stroke({ color: stroke, width: 2 });
     addText(tab, enabled ? label : `${label} LOCK`, x + 12, y + 10, {
-      ...textStyles.uiTiny,
-      fill: enabled ? 0xfff2cf : 0x92a0a8
+      ...t.textStyles.uiTiny,
+      fill: enabled ? t.colors.text.primary : t.colors.text.disabled
     });
     if (enabled) {
       tab.eventMode = "static";
@@ -478,12 +389,12 @@ class OfficeWorld {
 
   private drawChiefChat(panel: Graphics, time: number, taskRunning: boolean): void {
     addText(panel, "Hello Boss.", CHAT_X + 42, CHAT_Y + 320, {
-      ...textStyles.uiTitle,
-      fill: 0xffd37b,
-      stroke: { color: 0x1a365d, width: 4 }
+      ...t.textStyles.uiTitle,
+      fill: t.colors.text.heading,
+      stroke: { color: t.colors.text.chiefChatStroke, width: 4 }
     });
     addText(panel, "Six workers. Hey, how you doing?", CHAT_X + 42, CHAT_Y + 358, {
-      ...textStyles.uiBody,
+      ...t.textStyles.uiBody,
       wordWrapWidth: 242
     });
 
@@ -491,43 +402,43 @@ class OfficeWorld {
       ? "I gave the crew a task. Hover a worker in the office to read their pop-up, then pick View More."
       : "When I assign a task, worker tabs unlock and the office comes alive.";
     addText(panel, message, CHAT_X + 42, CHAT_Y + 434, {
-      ...textStyles.uiBody,
-      fill: 0xe4f6ff,
+      ...t.textStyles.uiBody,
+      fill: t.colors.text.info,
       wordWrapWidth: 242
     });
 
-    panel.rect(CHAT_X + 42, CHAT_Y + 604, 236, 38).fill({ color: taskRunning ? 0x2f6fab : 0x314053 });
-    panel.rect(CHAT_X + 48, CHAT_Y + 610, 224, 26).fill({ color: taskRunning ? 0x1a365d : 0x263146 });
+    panel.rect(CHAT_X + 42, CHAT_Y + 604, 236, 38).fill({ color: taskRunning ? t.colors.ui.buttonActiveBg : t.colors.ui.buttonDisabledBg });
+    panel.rect(CHAT_X + 48, CHAT_Y + 610, 224, 26).fill({ color: taskRunning ? t.colors.ui.buttonActiveInner : t.colors.ui.buttonDisabledInner });
     addText(panel, taskRunning ? "AGENTS ARE WORKING" : "TASK QUEUED SOON", CHAT_X + 64, CHAT_Y + 617, {
-      ...textStyles.uiTiny,
-      fill: taskRunning ? 0x8ef7a6 : 0xffd37b
+      ...t.textStyles.uiTiny,
+      fill: taskRunning ? t.colors.text.statusActive : t.colors.text.statusWaiting
     });
 
     const cursorX = CHAT_X + 50 + Math.floor(Math.sin(time * 5) * 3);
-    panel.rect(cursorX, CHAT_Y + 654, 12, 10).fill({ color: 0xfff2cf });
+    panel.rect(cursorX, CHAT_Y + 654, 12, 10).fill({ color: t.colors.text.primary });
   }
 
   private drawAgentChat(panel: Graphics, status: AgentStatus, time: number): void {
     const agent = status.agent;
     addText(panel, `${agent.name}'S TAB`, CHAT_X + 42, CHAT_Y + 320, {
-      ...textStyles.uiTitle,
-      fill: 0xffd37b,
-      stroke: { color: 0x1a365d, width: 4 }
+      ...t.textStyles.uiTitle,
+      fill: t.colors.text.heading,
+      stroke: { color: t.colors.text.chiefChatStroke, width: 4 }
     });
     drawMiniAgent(panel, CHAT_X + 78, CHAT_Y + 404, agent.palette, time);
     addText(panel, `Doing: ${activityLabel(status.frame.activity)}`, CHAT_X + 122, CHAT_Y + 374, {
-      ...textStyles.uiBody,
+      ...t.textStyles.uiBody,
       wordWrapWidth: 160
     });
     addText(panel, `Thinking: ${thoughtFor(agent, time)}`, CHAT_X + 122, CHAT_Y + 438, {
-      ...textStyles.uiBody,
-      fill: 0xe4f6ff,
+      ...t.textStyles.uiBody,
+      fill: t.colors.text.info,
       wordWrapWidth: 150
     });
-    panel.rect(CHAT_X + 42, CHAT_Y + 546, 236, 72).fill({ color: 0x1a365d });
-    addText(panel, "Current note", CHAT_X + 58, CHAT_Y + 562, textStyles.uiTiny);
+    panel.rect(CHAT_X + 42, CHAT_Y + 546, 236, 72).fill({ color: t.colors.ui.notesPanelBg });
+    addText(panel, "Current note", CHAT_X + 58, CHAT_Y + 562, t.textStyles.uiTiny);
     addText(panel, "Keep the work moving and report back in the boardroom.", CHAT_X + 58, CHAT_Y + 584, {
-      ...textStyles.uiSmall,
+      ...t.textStyles.uiSmall,
       fontSize: 12,
       wordWrap: true,
       wordWrapWidth: 202
@@ -556,18 +467,18 @@ class OfficeWorld {
     const x = clamp(anchorX - 88, GAME_X + 16, GAME_X + GAME_WIDTH - 240);
     const y = clamp(anchorY - 152, GAME_Y + 76, GAME_Y + GAME_HEIGHT - 166);
 
-    drawPixelPanel(g, x, y, 224, 132, 0xfff2cf, 0x1a365d, status.agent.palette.shirt);
+    drawPixelPanel(g, x, y, 224, 132, t.colors.ui.hoverPopupPaper, t.colors.ui.hoverPopupShade, status.agent.palette.shirt);
     addText(popup, status.agent.name.toUpperCase(), x + 18, y + 18, {
-      ...textStyles.uiSmall,
-      fill: 0xffd37b
+      ...t.textStyles.uiSmall,
+      fill: t.colors.text.heading
     });
     addText(popup, activityLabel(status.frame.activity), x + 18, y + 44, {
-      ...textStyles.uiTiny,
-      fill: 0x8ef7a6
+      ...t.textStyles.uiTiny,
+      fill: t.colors.text.statusActive
     });
     addText(popup, thoughtFor(status.agent, time), x + 18, y + 66, {
-      ...textStyles.uiTiny,
-      fill: 0xfff2cf,
+      ...t.textStyles.uiTiny,
+      fill: t.colors.text.primary,
       wordWrap: true,
       wordWrapWidth: 184
     });
@@ -575,9 +486,9 @@ class OfficeWorld {
     const button = new Container();
     const bg = new Graphics();
     button.addChild(bg);
-    bg.rect(x + 116, y + 92, 86, 24).fill({ color: 0xd4494c }).stroke({ color: 0xfff2cf, width: 2 });
+    bg.rect(x + 116, y + 92, 86, 24).fill({ color: t.colors.ui.buttonViewMore }).stroke({ color: t.colors.text.primary, width: 2 });
     addText(button, "VIEW MORE", x + 128, y + 99, {
-      ...textStyles.uiTiny,
+      ...t.textStyles.uiTiny,
       fontSize: 9
     });
     button.eventMode = "static";
@@ -657,12 +568,12 @@ class OfficeWorld {
     const g = new Graphics();
     this.staticLayer.addChild(g);
 
-    g.rect(0, 0, WORLD_WIDTH, WORLD_HEIGHT).fill({ color: 0x101614 });
-    drawRoom(g, 32, 36, 340, 238, colors.carpetA, "BOARDROOM");
-    drawRoom(g, 404, 36, 330, 238, 0x7c786b, "DEV SYNC");
-    drawRoom(g, 764, 36, 220, 238, colors.kitchenTileA, "KITCHEN");
-    drawRoom(g, 1018, 36, 230, 238, 0x695e86, "GAME ROOM");
-    drawRoom(g, 32, 304, 1216, 372, colors.floorA, "OPEN DESKS");
+    g.rect(0, 0, WORLD_WIDTH, WORLD_HEIGHT).fill({ color: t.colors.environment.officeBackground });
+    drawRoom(g, 32, 36, 340, 238, t.colors.environment.carpetA, "BOARDROOM");
+    drawRoom(g, 404, 36, 330, 238, t.colors.environment.devSyncFloorA, "DEV SYNC");
+    drawRoom(g, 764, 36, 220, 238, t.colors.environment.kitchenTileA, "KITCHEN");
+    drawRoom(g, 1018, 36, 230, 238, t.colors.environment.gameRoomFloorA, "GAME ROOM");
+    drawRoom(g, 32, 304, 1216, 372, t.colors.environment.floorA, "OPEN DESKS");
 
     this.drawOpenOffice(g);
     this.drawBoardroom(g);
@@ -673,7 +584,7 @@ class OfficeWorld {
   }
 
   private drawOpenOffice(g: Graphics): void {
-    drawTileFloor(g, 42, 314, 1196, 352, colors.floorA, colors.floorB);
+    drawTileFloor(g, 42, 314, 1196, 352, t.colors.environment.floorA, t.colors.environment.floorB);
 
     const deskPositions = [
       { x: 138, y: 424 },
@@ -688,8 +599,8 @@ class OfficeWorld {
       drawDesk(g, desk.x, desk.y, index % 2 === 0 ? "left" : "right");
     });
 
-    drawRug(g, 444, 394, 134, 92, 0x7c5651);
-    drawCouch(g, 1018, 520, 138, 42, 0x6b9f5a);
+    drawRug(g, 444, 394, 134, 92, t.colors.environment.openOfficeRug);
+    drawCouch(g, 1018, 520, 138, 42, t.colors.environment.openOfficeCouch);
     drawCoffeeTable(g, 1060, 590);
     drawBookshelf(g, 1124, 338);
     drawPlant(g, 86, 342, 1.1);
@@ -697,45 +608,45 @@ class OfficeWorld {
   }
 
   private drawBoardroom(g: Graphics): void {
-    drawTileFloor(g, 42, 46, 320, 218, colors.carpetA, colors.carpetB);
-    drawLongTable(g, 106, 108, 194, 78, 0x8f5b3e, 0xb9794d);
+    drawTileFloor(g, 42, 46, 320, 218, t.colors.environment.carpetA, t.colors.environment.carpetB);
+    drawLongTable(g, 106, 108, 194, 78, t.colors.environment.boardroomTableBase, t.colors.environment.boardroomTableTop);
     drawWhiteboard(g, 76, 58, 230, 34, "ROADMAP");
-    drawChair(g, 92, 138, 0x46606d);
-    drawChair(g, 316, 138, 0x46606d);
-    drawChair(g, 132, 204, 0x46606d);
-    drawChair(g, 252, 204, 0x46606d);
+    drawChair(g, 92, 138, t.colors.environment.boardroomChair);
+    drawChair(g, 316, 138, t.colors.environment.boardroomChair);
+    drawChair(g, 132, 204, t.colors.environment.boardroomChair);
+    drawChair(g, 252, 204, t.colors.environment.boardroomChair);
     drawTinyFileStack(g, 184, 132);
   }
 
   private drawDevSyncRoom(g: Graphics): void {
-    drawTileFloor(g, 414, 46, 310, 218, 0x7c786b, 0x898377);
-    drawLongTable(g, 442, 144, 142, 64, 0x72543d, 0xa86f48);
+    drawTileFloor(g, 414, 46, 310, 218, t.colors.environment.devSyncFloorA, t.colors.environment.devSyncFloorB);
+    drawLongTable(g, 442, 144, 142, 64, t.colors.environment.devSyncTableBase, t.colors.environment.devSyncTableTop);
     drawWhiteboard(g, 508, 58, 164, 56, "ARCHITECTURE");
-    drawChair(g, 424, 154, 0x755d83);
-    drawChair(g, 596, 154, 0x755d83);
-    drawChair(g, 500, 218, 0x755d83);
+    drawChair(g, 424, 154, t.colors.environment.devSyncChair);
+    drawChair(g, 596, 154, t.colors.environment.devSyncChair);
+    drawChair(g, 500, 218, t.colors.environment.devSyncChair);
     drawLaptopOnTable(g, 494, 160);
   }
 
   private drawKitchen(g: Graphics): void {
-    drawTileFloor(g, 774, 46, 200, 218, colors.kitchenTileA, colors.kitchenTileB);
-    g.rect(782, 62, 176, 34).fill({ color: 0x8fb6b0 });
-    g.rect(790, 68, 46, 22).fill({ color: 0xe9f3f0 });
-    g.rect(846, 68, 42, 22).fill({ color: 0xd05b4e });
-    g.rect(904, 64, 42, 30).fill({ color: 0x505e66 });
-    g.rect(910, 70, 30, 16).fill({ color: 0xcfe5e1 });
-    drawRoundTable(g, 838, 170, 54, 0xba8651);
-    drawChair(g, 792, 176, 0x5f8f7e);
-    drawChair(g, 914, 176, 0x5f8f7e);
+    drawTileFloor(g, 774, 46, 200, 218, t.colors.environment.kitchenTileA, t.colors.environment.kitchenTileB);
+    g.rect(782, 62, 176, 34).fill({ color: t.colors.environment.kitchenCounter });
+    g.rect(790, 68, 46, 22).fill({ color: t.colors.environment.kitchenSink });
+    g.rect(846, 68, 42, 22).fill({ color: t.colors.environment.kitchenStove });
+    g.rect(904, 64, 42, 30).fill({ color: t.colors.environment.kitchenAppliance });
+    g.rect(910, 70, 30, 16).fill({ color: t.colors.environment.kitchenApplianceInner });
+    drawRoundTable(g, 838, 170, 54, t.colors.environment.kitchenTable);
+    drawChair(g, 792, 176, t.colors.environment.kitchenChair);
+    drawChair(g, 914, 176, t.colors.environment.kitchenChair);
     drawPlant(g, 954, 240, 0.75);
   }
 
   private drawGameRoom(g: Graphics): void {
-    drawTileFloor(g, 1028, 46, 210, 218, 0x695e86, 0x746797);
-    drawArcadeCabinet(g, 1050, 82, 0xce565c);
-    drawArcadeCabinet(g, 1114, 82, 0x3f7cac);
-    drawCouch(g, 1052, 202, 124, 36, 0x866cb0);
-    drawRoundTable(g, 1190, 166, 32, 0x7f5742);
+    drawTileFloor(g, 1028, 46, 210, 218, t.colors.environment.gameRoomFloorA, t.colors.environment.gameRoomFloorB);
+    drawArcadeCabinet(g, 1050, 82, t.colors.environment.arcadeCabinetRed);
+    drawArcadeCabinet(g, 1114, 82, t.colors.environment.arcadeCabinetBlue);
+    drawCouch(g, 1052, 202, 124, 36, t.colors.environment.gameRoomCouch);
+    drawRoundTable(g, 1190, 166, 32, t.colors.environment.gameRoomTable);
     drawBookshelf(g, 1206, 86);
   }
 
@@ -753,12 +664,12 @@ class OfficeWorld {
     this.dynamicLayer.addChild(g);
 
     const blink = Math.floor(time * 3) % 2;
-    drawMonitorGlow(g, 162, 430, blink ? 0x9bf4ff : 0x73bad4);
-    drawMonitorGlow(g, 342, 430, blink ? 0xc5ff9b : 0x7ed47a);
-    drawMonitorGlow(g, 668, 448, blink ? 0x9bf4ff : 0x73bad4);
-    drawMonitorGlow(g, 848, 448, blink ? 0xffd37b : 0xd2a15d);
-    drawMonitorGlow(g, 248, 568, blink ? 0xc5ff9b : 0x7ed47a);
-    drawMonitorGlow(g, 744, 568, blink ? 0x9bf4ff : 0x73bad4);
+    drawMonitorGlow(g, 162, 430, blink ? t.colors.monitorGlow.cyanBright : t.colors.monitorGlow.cyanDim);
+    drawMonitorGlow(g, 342, 430, blink ? t.colors.monitorGlow.greenBright : t.colors.monitorGlow.greenDim);
+    drawMonitorGlow(g, 668, 448, blink ? t.colors.monitorGlow.cyanBright : t.colors.monitorGlow.cyanDim);
+    drawMonitorGlow(g, 848, 448, blink ? t.colors.monitorGlow.yellowBright : t.colors.monitorGlow.yellowDim);
+    drawMonitorGlow(g, 248, 568, blink ? t.colors.monitorGlow.greenBright : t.colors.monitorGlow.greenDim);
+    drawMonitorGlow(g, 744, 568, blink ? t.colors.monitorGlow.cyanBright : t.colors.monitorGlow.cyanDim);
 
     drawWhiteboardMarks(g, time);
     drawGameScreen(g, time);
@@ -773,17 +684,17 @@ class OfficeWorld {
 
     const pulse = 0.5 + Math.sin(time * 3) * 0.5;
 
-    g.rect(0, 0, WORLD_WIDTH, WORLD_HEIGHT).fill({ color: 0x111c1d });
-    drawTileFloor(g, 0, 0, WORLD_WIDTH, WORLD_HEIGHT, 0x142526, 0x172b2c);
-    g.rect(74, 60, 1132, 600).fill({ color: 0x203033 });
-    g.rect(82, 68, 1116, 584).fill({ color: 0x142022 });
-    g.rect(108, 96, 1064, 64).fill({ color: 0x2e4547 });
-    g.rect(112, 100, 1056 * clamp(time / 4, 0, 1), 56).fill({ color: 0x466e6a });
-    g.rect(112, 100, 1056, 4).fill({ color: 0x8fd1c7, alpha: 0.4 + pulse * 0.35 });
+    g.rect(0, 0, WORLD_WIDTH, WORLD_HEIGHT).fill({ color: t.colors.ui.presentationBg });
+    drawTileFloor(g, 0, 0, WORLD_WIDTH, WORLD_HEIGHT, t.colors.ui.presentationTileA, t.colors.ui.presentationTileB);
+    g.rect(74, 60, 1132, 600).fill({ color: t.colors.ui.presentationOuterFrame });
+    g.rect(82, 68, 1116, 584).fill({ color: t.colors.ui.presentationInnerFrame });
+    g.rect(108, 96, 1064, 64).fill({ color: t.colors.ui.presentationProgressTrack });
+    g.rect(112, 100, 1056 * clamp(time / 4, 0, 1), 56).fill({ color: t.colors.ui.presentationProgressFill });
+    g.rect(112, 100, 1056, 4).fill({ color: t.colors.ui.presentationProgressGlow, alpha: 0.4 + pulse * 0.35 });
 
     const title = new Text({
       text: "Agent session complete",
-      style: textStyles.presentationTitle,
+      style: t.textStyles.presentationTitle,
       textureStyle: { scaleMode: "nearest" }
     });
     title.position.set(132, 108);
@@ -791,20 +702,20 @@ class OfficeWorld {
 
     const summary = new Text({
       text: "Summary\n- Implemented office task loop\n- Generated activity visuals\n- Prepared review packet",
-      style: { ...textStyles.presentationBody, lineHeight: 31 },
+      style: { ...t.textStyles.presentationBody, lineHeight: 31 },
       textureStyle: { scaleMode: "nearest" }
     });
     summary.position.set(132, 218);
     this.presentationLayer.addChild(summary);
 
-    drawFileCard(g, 574, 214, "src/office-world.ts", "Pixi office scene", 0x8fd1c7);
-    drawFileCard(g, 574, 330, "src/main.ts", "Canvas bootstrap", 0xf4c76b);
-    drawFileCard(g, 574, 446, "src/styles.css", "Pixel rendering", 0xb95f89);
+    drawFileCard(g, 574, 214, "src/office-world.ts", "Pixi office scene", t.colors.fileCardAccentCyan);
+    drawFileCard(g, 574, 330, "src/main.ts", "Canvas bootstrap", t.colors.fileCardAccentGold);
+    drawFileCard(g, 574, 446, "src/styles.css", "Pixel rendering", t.colors.fileCardAccentPink);
 
     for (let index = 0; index < 5; index += 1) {
       const y = 542 + index * 18;
       const width = 300 + Math.sin(time * 2 + index) * 22;
-      g.rect(132, y, width, 8).fill({ color: index % 2 ? 0x466e6a : 0x6b9f5a });
+      g.rect(132, y, width, 8).fill({ color: index % 2 ? t.colors.ui.presentationBarA : t.colors.ui.presentationBarB });
     }
   }
 }
@@ -817,7 +728,7 @@ class AgentView {
   private readonly bubbleBackground = new Graphics();
   private readonly bubbleText = new Text({
     text: "",
-    style: textStyles.bubble,
+    style: t.textStyles.bubble,
     textureStyle: { scaleMode: "nearest" }
   });
   private readonly nameText: Text;
@@ -825,13 +736,7 @@ class AgentView {
   public constructor(public readonly definition: AgentDefinition) {
     this.nameText = new Text({
       text: definition.name,
-      style: {
-        fontFamily: "\"Courier New\", monospace",
-        fontSize: 9,
-        fontWeight: "700",
-        fill: 0xfff2cf,
-        stroke: { color: 0x241813, width: 3 }
-      },
+      style: t.textStyles.agentName,
       textureStyle: { scaleMode: "nearest" }
     });
     this.nameText.anchor.set(0.5, 0);
@@ -862,10 +767,10 @@ class AgentView {
     this.bubbleBackground.clear();
     this.bubbleBackground
       .roundRect(-66, -84, 132, 28, 7)
-      .fill({ color: 0xfff7db })
-      .stroke({ color: 0x3a2a24, width: 3 });
-    this.bubbleBackground.rect(-10, -58, 14, 10).fill({ color: 0xfff7db });
-    this.bubbleBackground.rect(-7, -55, 8, 4).fill({ color: 0x3a2a24 });
+      .fill({ color: t.colors.agent.bubbleFill })
+      .stroke({ color: t.colors.agent.bubbleStroke, width: 3 });
+    this.bubbleBackground.rect(-10, -58, 14, 10).fill({ color: t.colors.agent.bubbleFill });
+    this.bubbleBackground.rect(-7, -55, 8, 4).fill({ color: t.colors.agent.bubbleStroke });
   }
 }
 
@@ -890,17 +795,17 @@ function drawPixelPanel(
   shade: number,
   accent: number
 ): void {
-  g.rect(x, y, width, height).fill({ color: 0x071421 });
+  g.rect(x, y, width, height).fill({ color: t.colors.ui.panelOuterBorder });
   g.rect(x + 5, y + 5, width - 10, height - 10).fill({ color: paper });
   g.rect(x + 10, y + 10, width - 20, height - 20).fill({ color: shade });
   g.rect(x + 10, y + 10, width - 20, 5).fill({ color: accent });
-  g.rect(x + 10, y + height - 15, width - 20, 5).fill({ color: 0x0d1627 });
-  g.rect(x + 10, y + 10, 5, height - 20).fill({ color: 0x0d1627 });
-  g.rect(x + width - 15, y + 10, 5, height - 20).fill({ color: 0x0d1627 });
+  g.rect(x + 10, y + height - 15, width - 20, 5).fill({ color: t.colors.ui.panelInnerBorder });
+  g.rect(x + 10, y + 10, 5, height - 20).fill({ color: t.colors.ui.panelInnerBorder });
+  g.rect(x + width - 15, y + 10, 5, height - 20).fill({ color: t.colors.ui.panelInnerBorder });
 }
 
 function drawMiniAgent(g: Graphics, x: number, y: number, palette: AgentPalette, time: number): void {
-  g.rect(x - 24, y + 22, 48, 14).fill({ color: 0x0d1627, alpha: 0.36 });
+  g.rect(x - 24, y + 22, 48, 14).fill({ color: t.colors.ui.miniAgentShadow, alpha: 0.36 });
   const mini = new Graphics();
   drawAgentSprite(mini, palette, "typing", "down", time);
   mini.scale.set(1.35);
@@ -923,16 +828,16 @@ function activityLabel(activity: Activity): string {
 }
 
 function drawRoom(g: Graphics, x: number, y: number, width: number, height: number, floor: number, label: string): void {
-  g.rect(x - 8, y - 8, width + 16, height + 16).fill({ color: colors.wallDark });
+  g.rect(x - 8, y - 8, width + 16, height + 16).fill({ color: t.colors.environment.wallDark });
   g.rect(x, y, width, height).fill({ color: floor });
-  g.rect(x, y, width, 8).fill({ color: colors.trim });
-  g.rect(x, y + height - 8, width, 8).fill({ color: colors.wall });
-  g.rect(x, y, 8, height).fill({ color: colors.wall });
-  g.rect(x + width - 8, y, 8, height).fill({ color: colors.wallDark });
+  g.rect(x, y, width, 8).fill({ color: t.colors.environment.trim });
+  g.rect(x, y + height - 8, width, 8).fill({ color: t.colors.environment.wall });
+  g.rect(x, y, 8, height).fill({ color: t.colors.environment.wall });
+  g.rect(x + width - 8, y, 8, height).fill({ color: t.colors.environment.wallDark });
 
   const plaque = new Text({
     text: label,
-    style: textStyles.plaque,
+    style: t.textStyles.plaque,
     textureStyle: { scaleMode: "nearest" }
   });
   plaque.position.set(x + 14, y + 12);
@@ -949,56 +854,51 @@ function drawTileFloor(g: Graphics, x: number, y: number, width: number, height:
 }
 
 function drawDesk(g: Graphics, x: number, y: number, facing: "left" | "right"): void {
-  g.rect(x, y, 122, 54).fill({ color: colors.desk });
-  g.rect(x + 5, y + 5, 112, 36).fill({ color: colors.deskTop });
-  g.rect(x + 14, y + 44, 16, 24).fill({ color: 0x513d2b });
-  g.rect(x + 92, y + 44, 16, 24).fill({ color: 0x513d2b });
+  g.rect(x, y, 122, 54).fill({ color: t.colors.environment.desk });
+  g.rect(x + 5, y + 5, 112, 36).fill({ color: t.colors.environment.deskTop });
+  g.rect(x + 14, y + 44, 16, 24).fill({ color: t.colors.environment.deskLeg });
+  g.rect(x + 92, y + 44, 16, 24).fill({ color: t.colors.environment.deskLeg });
   const monitorX = facing === "left" ? x + 22 : x + 66;
-  g.rect(monitorX, y + 8, 36, 24).fill({ color: colors.monitor });
-  g.rect(monitorX + 5, y + 13, 26, 12).fill({ color: colors.monitorGlow });
-  g.rect(monitorX + 14, y + 32, 8, 10).fill({ color: 0x1c2736 });
-  g.rect(monitorX + 5, y + 40, 26, 5).fill({ color: 0x1c2736 });
-  g.rect(x + 48, y + 36, 28, 7).fill({ color: 0x30261f });
+  g.rect(monitorX, y + 8, 36, 24).fill({ color: t.colors.environment.monitor });
+  g.rect(monitorX + 5, y + 13, 26, 12).fill({ color: t.colors.environment.monitorGlow });
+  g.rect(monitorX + 14, y + 32, 8, 10).fill({ color: t.colors.environment.monitorStand });
+  g.rect(monitorX + 5, y + 40, 26, 5).fill({ color: t.colors.environment.monitorStand });
+  g.rect(x + 48, y + 36, 28, 7).fill({ color: t.colors.environment.keyboard });
 }
 
 function drawMonitorGlow(g: Graphics, x: number, y: number, color: number): void {
   g.rect(x, y, 26, 12).fill({ color, alpha: 0.88 });
-  g.rect(x + 4, y + 4, 18, 2).fill({ color: 0xf6ffff, alpha: 0.55 });
+  g.rect(x + 4, y + 4, 18, 2).fill({ color: t.colors.monitorScreenHighlight, alpha: 0.55 });
 }
 
 function drawLongTable(g: Graphics, x: number, y: number, width: number, height: number, base: number, top: number): void {
   g.rect(x, y + 10, width, height).fill({ color: base });
   g.rect(x + 7, y, width - 14, height - 4).fill({ color: top });
-  g.rect(x + 20, y + height, 18, 22).fill({ color: 0x4a3022 });
-  g.rect(x + width - 38, y + height, 18, 22).fill({ color: 0x4a3022 });
+  g.rect(x + 20, y + height, 18, 22).fill({ color: t.colors.environment.tableLeg });
+  g.rect(x + width - 38, y + height, 18, 22).fill({ color: t.colors.environment.tableLeg });
 }
 
 function drawRoundTable(g: Graphics, x: number, y: number, radius: number, color: number): void {
   g.circle(x, y, radius).fill({ color });
   g.circle(x, y, radius - 8).fill({ color: lighten(color, 18) });
-  g.rect(x - 10, y + radius - 4, 20, 22).fill({ color: 0x563b2d });
+  g.rect(x - 10, y + radius - 4, 20, 22).fill({ color: t.colors.environment.roundTableLeg });
 }
 
 function drawChair(g: Graphics, x: number, y: number, color: number): void {
   g.rect(x - 14, y - 12, 28, 26).fill({ color });
   g.rect(x - 10, y - 18, 20, 8).fill({ color: lighten(color, 20) });
-  g.rect(x - 10, y + 12, 6, 12).fill({ color: 0x342820 });
-  g.rect(x + 4, y + 12, 6, 12).fill({ color: 0x342820 });
+  g.rect(x - 10, y + 12, 6, 12).fill({ color: t.colors.environment.chairLeg });
+  g.rect(x + 4, y + 12, 6, 12).fill({ color: t.colors.environment.chairLeg });
 }
 
 function drawWhiteboard(g: Graphics, x: number, y: number, width: number, height: number, label: string): void {
-  g.rect(x - 3, y - 3, width + 6, height + 6).fill({ color: colors.boardStroke });
-  g.rect(x, y, width, height).fill({ color: colors.board });
-  g.rect(x + 12, y + 12, Math.max(24, width - 42), 4).fill({ color: 0x75a187 });
-  g.rect(x + 12, y + 24, Math.max(18, width - 70), 4).fill({ color: 0xc9514d });
+  g.rect(x - 3, y - 3, width + 6, height + 6).fill({ color: t.colors.environment.boardStroke });
+  g.rect(x, y, width, height).fill({ color: t.colors.environment.board });
+  g.rect(x + 12, y + 12, Math.max(24, width - 42), 4).fill({ color: t.colors.accent.whiteboardGreen });
+  g.rect(x + 12, y + 24, Math.max(18, width - 70), 4).fill({ color: t.colors.accent.whiteboardRed });
   const boardLabel = new Text({
     text: label,
-    style: {
-      fontFamily: "\"Courier New\", monospace",
-      fontSize: 9,
-      fontWeight: "700",
-      fill: colors.ink
-    },
+    style: t.textStyles.boardLabel,
     textureStyle: { scaleMode: "nearest" }
   });
   boardLabel.position.set(x + 10, y + height - 17);
@@ -1010,100 +910,100 @@ function drawWhiteboardMarks(g: Graphics, time: number): void {
   for (let i = 0; i < count; i += 1) {
     const x = 526 + i * 26;
     const y = 84 + Math.sin(time * 4 + i) * 8;
-    g.rect(x, y, 22, 4).fill({ color: i % 2 ? colors.red : colors.leaf });
-    g.rect(x + 6, y + 8, 12, 3).fill({ color: colors.ink, alpha: 0.35 });
+    g.rect(x, y, 22, 4).fill({ color: i % 2 ? t.colors.accent.envRed : t.colors.accent.leaf });
+    g.rect(x + 6, y + 8, 12, 3).fill({ color: t.colors.text.ink, alpha: 0.35 });
   }
 }
 
 function drawGameScreen(g: Graphics, time: number): void {
   const frame = Math.floor(time * 5) % 3;
-  const colorsByFrame = [0xf4c76b, 0x8fd1c7, 0xb95f89];
-  g.rect(1062, 100, 28, 20).fill({ color: colorsByFrame[frame] ?? 0xf4c76b });
-  g.rect(1126, 100, 28, 20).fill({ color: colorsByFrame[(frame + 1) % 3] ?? 0x8fd1c7 });
-  g.rect(1070 + frame * 5, 112, 5, 5).fill({ color: 0x101614 });
-  g.rect(1134 + frame * 4, 108, 5, 5).fill({ color: 0x101614 });
+  const colorsByFrame = [t.colors.gameScreenYellow, t.colors.gameScreenCyan, t.colors.gameScreenPink];
+  g.rect(1062, 100, 28, 20).fill({ color: colorsByFrame[frame] ?? t.colors.gameScreenYellow });
+  g.rect(1126, 100, 28, 20).fill({ color: colorsByFrame[(frame + 1) % 3] ?? t.colors.gameScreenCyan });
+  g.rect(1070 + frame * 5, 112, 5, 5).fill({ color: t.colors.gameScreenPixel });
+  g.rect(1134 + frame * 4, 108, 5, 5).fill({ color: t.colors.gameScreenPixel });
 }
 
 function drawKitchenBites(g: Graphics, time: number): void {
   const bite = Math.floor(time * 2) % 2;
-  g.circle(838, 170, 14).fill({ color: 0xf8f1dc });
-  g.circle(838, 170, 9).fill({ color: bite ? 0xffcf7a : 0xd85d4f });
-  g.rect(868, 160, 22, 5).fill({ color: 0xaeb5aa });
-  g.rect(882, 156 + bite * 3, 4, 13).fill({ color: 0xaeb5aa });
+  g.circle(838, 170, 14).fill({ color: t.colors.environment.kitchenPlateOuter });
+  g.circle(838, 170, 9).fill({ color: bite ? t.colors.environment.kitchenFoodA : t.colors.environment.kitchenFoodB });
+  g.rect(868, 160, 22, 5).fill({ color: t.colors.environment.kitchenUtensil });
+  g.rect(882, 156 + bite * 3, 4, 13).fill({ color: t.colors.environment.kitchenUtensil });
 }
 
 function drawMeetingNotes(g: Graphics, time: number): void {
   const blink = Math.floor(time * 2) % 2;
-  g.rect(510, 166, 32, 18).fill({ color: blink ? 0xfff2cf : 0xf4c76b });
-  g.rect(515, 171, 22, 2).fill({ color: colors.ink, alpha: 0.55 });
-  g.rect(515, 176, 15, 2).fill({ color: colors.ink, alpha: 0.55 });
+  g.rect(510, 166, 32, 18).fill({ color: blink ? t.colors.meetingNoteCream : t.colors.meetingNoteGold });
+  g.rect(515, 171, 22, 2).fill({ color: t.colors.text.ink, alpha: 0.55 });
+  g.rect(515, 176, 15, 2).fill({ color: t.colors.text.ink, alpha: 0.55 });
 }
 
 function drawArcadeCabinet(g: Graphics, x: number, y: number, color: number): void {
   g.rect(x, y, 44, 82).fill({ color });
-  g.rect(x + 6, y + 8, 32, 28).fill({ color: 0x15252a });
-  g.rect(x + 10, y + 46, 24, 7).fill({ color: 0x231a18 });
-  g.circle(x + 14, y + 62, 4).fill({ color: colors.yellow });
-  g.circle(x + 28, y + 62, 4).fill({ color: colors.blue });
-  g.rect(x + 5, y + 78, 34, 8).fill({ color: 0x2c1d1b });
+  g.rect(x + 6, y + 8, 32, 28).fill({ color: t.colors.environment.arcadeScreen });
+  g.rect(x + 10, y + 46, 24, 7).fill({ color: t.colors.environment.arcadeControls });
+  g.circle(x + 14, y + 62, 4).fill({ color: t.colors.accent.envYellow });
+  g.circle(x + 28, y + 62, 4).fill({ color: t.colors.accent.envBlue });
+  g.rect(x + 5, y + 78, 34, 8).fill({ color: t.colors.environment.arcadeBase });
 }
 
 function drawCouch(g: Graphics, x: number, y: number, width: number, height: number, color: number): void {
   g.rect(x, y + 14, width, height).fill({ color });
   g.rect(x + 8, y, width - 16, height - 8).fill({ color: lighten(color, 18) });
-  g.rect(x + 8, y + height + 10, 12, 12).fill({ color: 0x342820 });
-  g.rect(x + width - 20, y + height + 10, 12, 12).fill({ color: 0x342820 });
+  g.rect(x + 8, y + height + 10, 12, 12).fill({ color: t.colors.environment.couchLeg });
+  g.rect(x + width - 20, y + height + 10, 12, 12).fill({ color: t.colors.environment.couchLeg });
 }
 
 function drawCoffeeTable(g: Graphics, x: number, y: number): void {
-  g.rect(x, y, 70, 28).fill({ color: 0x83543a });
-  g.rect(x + 8, y + 6, 54, 10).fill({ color: 0xa66f49 });
-  g.rect(x + 18, y + 26, 8, 14).fill({ color: 0x3d2f28 });
-  g.rect(x + 46, y + 26, 8, 14).fill({ color: 0x3d2f28 });
+  g.rect(x, y, 70, 28).fill({ color: t.colors.environment.coffeeTableBase });
+  g.rect(x + 8, y + 6, 54, 10).fill({ color: t.colors.environment.coffeeTableTop });
+  g.rect(x + 18, y + 26, 8, 14).fill({ color: t.colors.environment.coffeeTableLeg });
+  g.rect(x + 46, y + 26, 8, 14).fill({ color: t.colors.environment.coffeeTableLeg });
 }
 
 function drawBookshelf(g: Graphics, x: number, y: number): void {
-  g.rect(x, y, 76, 104).fill({ color: 0x5e3c2b });
-  g.rect(x + 6, y + 8, 64, 22).fill({ color: 0x2e211c });
-  g.rect(x + 6, y + 38, 64, 22).fill({ color: 0x2e211c });
-  g.rect(x + 6, y + 68, 64, 22).fill({ color: 0x2e211c });
-  const bookColors = [colors.red, colors.blue, colors.yellow, colors.leaf, colors.purple];
+  g.rect(x, y, 76, 104).fill({ color: t.colors.environment.bookshelfWood });
+  g.rect(x + 6, y + 8, 64, 22).fill({ color: t.colors.environment.bookshelfShelf });
+  g.rect(x + 6, y + 38, 64, 22).fill({ color: t.colors.environment.bookshelfShelf });
+  g.rect(x + 6, y + 68, 64, 22).fill({ color: t.colors.environment.bookshelfShelf });
+  const bookColors = [t.colors.accent.envRed, t.colors.accent.envBlue, t.colors.accent.envYellow, t.colors.accent.leaf, t.colors.accent.purple];
   for (let row = 0; row < 3; row += 1) {
     for (let col = 0; col < 7; col += 1) {
-      g.rect(x + 11 + col * 8, y + 11 + row * 30, 5, 17).fill({ color: bookColors[(row + col) % bookColors.length] ?? colors.red });
+      g.rect(x + 11 + col * 8, y + 11 + row * 30, 5, 17).fill({ color: bookColors[(row + col) % bookColors.length] ?? t.colors.accent.envRed });
     }
   }
 }
 
 function drawPlant(g: Graphics, x: number, y: number, scale: number): void {
   const potW = 26 * scale;
-  g.rect(x - potW / 2, y, potW, 20 * scale).fill({ color: 0xa35e3f });
-  g.rect(x - potW / 2 + 4 * scale, y + 5 * scale, potW - 8 * scale, 8 * scale).fill({ color: 0xc46d49 });
-  g.circle(x - 12 * scale, y - 10 * scale, 12 * scale).fill({ color: 0x4f8a4c });
-  g.circle(x + 10 * scale, y - 14 * scale, 13 * scale).fill({ color: 0x66a85a });
-  g.circle(x, y - 24 * scale, 11 * scale).fill({ color: 0x5f9d54 });
+  g.rect(x - potW / 2, y, potW, 20 * scale).fill({ color: t.colors.environment.potBase });
+  g.rect(x - potW / 2 + 4 * scale, y + 5 * scale, potW - 8 * scale, 8 * scale).fill({ color: t.colors.environment.potRim });
+  g.circle(x - 12 * scale, y - 10 * scale, 12 * scale).fill({ color: t.colors.environment.leafDark });
+  g.circle(x + 10 * scale, y - 14 * scale, 13 * scale).fill({ color: t.colors.environment.leafLight });
+  g.circle(x, y - 24 * scale, 11 * scale).fill({ color: t.colors.environment.leafMedium });
 }
 
 function drawWaterCooler(g: Graphics, x: number, y: number): void {
-  g.rect(x, y + 22, 34, 52).fill({ color: 0xd9d7c7 });
-  g.rect(x + 8, y + 46, 18, 6).fill({ color: 0x5b6b72 });
-  g.circle(x + 17, y + 14, 20).fill({ color: 0x9dd7e7, alpha: 0.9 });
-  g.circle(x + 10, y + 8, 5).fill({ color: 0xecffff, alpha: 0.7 });
+  g.rect(x, y + 22, 34, 52).fill({ color: t.colors.environment.waterCoolerBody });
+  g.rect(x + 8, y + 46, 18, 6).fill({ color: t.colors.environment.waterCoolerSpigot });
+  g.circle(x + 17, y + 14, 20).fill({ color: t.colors.environment.waterCoolerJug, alpha: 0.9 });
+  g.circle(x + 10, y + 8, 5).fill({ color: t.colors.environment.waterCoolerHighlight, alpha: 0.7 });
 }
 
 function drawNoticeBoard(g: Graphics, x: number, y: number): void {
-  g.rect(x, y - 52, 144, 48).fill({ color: 0x5e3c2b });
-  g.rect(x + 8, y - 44, 128, 32).fill({ color: 0xcead75 });
-  g.rect(x + 16, y - 38, 34, 22).fill({ color: 0xfff2cf });
-  g.rect(x + 62, y - 38, 24, 22).fill({ color: 0x8fd1c7 });
-  g.rect(x + 96, y - 38, 28, 22).fill({ color: 0xf4c76b });
+  g.rect(x, y - 52, 144, 48).fill({ color: t.colors.environment.noticeBoardFrame });
+  g.rect(x + 8, y - 44, 128, 32).fill({ color: t.colors.environment.noticeBoardCork });
+  g.rect(x + 16, y - 38, 34, 22).fill({ color: t.colors.noticeBoardCardCream });
+  g.rect(x + 62, y - 38, 24, 22).fill({ color: t.colors.noticeBoardCardCyan });
+  g.rect(x + 96, y - 38, 28, 22).fill({ color: t.colors.noticeBoardCardGold });
 }
 
 function drawPottedBooks(g: Graphics, x: number, y: number): void {
-  g.rect(x, y, 118, 32).fill({ color: 0x5e3c2b });
-  g.rect(x + 10, y - 20, 10, 20).fill({ color: colors.red });
-  g.rect(x + 24, y - 24, 10, 24).fill({ color: colors.blue });
-  g.rect(x + 38, y - 16, 10, 16).fill({ color: colors.yellow });
+  g.rect(x, y, 118, 32).fill({ color: t.colors.environment.bookshelfWood });
+  g.rect(x + 10, y - 20, 10, 20).fill({ color: t.colors.accent.envRed });
+  g.rect(x + 24, y - 24, 10, 24).fill({ color: t.colors.accent.envBlue });
+  g.rect(x + 38, y - 16, 10, 16).fill({ color: t.colors.accent.envYellow });
   drawPlant(g, x + 94, y - 18, 0.6);
 }
 
@@ -1114,28 +1014,28 @@ function drawRug(g: Graphics, x: number, y: number, width: number, height: numbe
 }
 
 function drawLaptopOnTable(g: Graphics, x: number, y: number): void {
-  g.rect(x, y, 42, 28).fill({ color: 0x1d2530 });
-  g.rect(x + 6, y + 5, 30, 14).fill({ color: 0x8fd1c7 });
-  g.rect(x - 5, y + 26, 52, 5).fill({ color: 0x2f3340 });
+  g.rect(x, y, 42, 28).fill({ color: t.colors.environment.laptopBase });
+  g.rect(x + 6, y + 5, 30, 14).fill({ color: t.colors.environment.laptopScreen });
+  g.rect(x - 5, y + 26, 52, 5).fill({ color: t.colors.environment.laptopKeyboard });
 }
 
 function drawTinyFileStack(g: Graphics, x: number, y: number): void {
-  g.rect(x, y, 34, 22).fill({ color: 0xfff2cf });
-  g.rect(x + 5, y + 5, 24, 2).fill({ color: colors.ink, alpha: 0.5 });
-  g.rect(x + 5, y + 11, 18, 2).fill({ color: colors.ink, alpha: 0.5 });
+  g.rect(x, y, 34, 22).fill({ color: t.colors.fileStackPaper });
+  g.rect(x + 5, y + 5, 24, 2).fill({ color: t.colors.text.ink, alpha: 0.5 });
+  g.rect(x + 5, y + 11, 18, 2).fill({ color: t.colors.text.ink, alpha: 0.5 });
 }
 
 function drawFileCard(g: Graphics, x: number, y: number, filename: string, description: string, accent: number): void {
-  g.rect(x, y, 500, 84).fill({ color: 0x203033 });
-  g.rect(x + 12, y + 12, 52, 60).fill({ color: 0xfff2cf });
-  g.rect(x + 44, y + 12, 20, 20).fill({ color: 0xd7c89e });
+  g.rect(x, y, 500, 84).fill({ color: t.colors.ui.presentationFileCardBg });
+  g.rect(x + 12, y + 12, 52, 60).fill({ color: t.colors.ui.presentationFileIconBg });
+  g.rect(x + 44, y + 12, 20, 20).fill({ color: t.colors.ui.presentationFileIconCorner });
   g.rect(x + 76, y + 20, 300, 12).fill({ color: accent });
-  g.rect(x + 76, y + 46, 386, 9).fill({ color: 0x86a49d });
-  g.rect(x + 76, y + 62, 226, 7).fill({ color: 0x5a706c });
+  g.rect(x + 76, y + 46, 386, 9).fill({ color: t.colors.ui.presentationFileDetailA });
+  g.rect(x + 76, y + 62, 226, 7).fill({ color: t.colors.ui.presentationFileDetailB });
 
   const fileText = new Text({
     text: filename,
-    style: { ...textStyles.presentationBody, fontSize: 15, fill: 0xfff2cf },
+    style: { ...t.textStyles.presentationBody, fontSize: 15, fill: t.colors.text.presentationFileTitle },
     textureStyle: { scaleMode: "nearest" }
   });
   fileText.position.set(x + 82, y + 14);
@@ -1143,7 +1043,7 @@ function drawFileCard(g: Graphics, x: number, y: number, filename: string, descr
 
   const descText = new Text({
     text: description,
-    style: { ...textStyles.presentationBody, fontSize: 13, fill: 0xc9d7ce },
+    style: { ...t.textStyles.presentationBody, fontSize: 13, fill: t.colors.text.presentationFileDesc },
     textureStyle: { scaleMode: "nearest" }
   });
   descText.position.set(x + 82, y + 38);
@@ -1153,7 +1053,7 @@ function drawFileCard(g: Graphics, x: number, y: number, filename: string, descr
 function drawAgentShadow(g: Graphics, activity: Activity, time: number): void {
   g.clear();
   const width = activity === "walking" ? 28 + Math.sin(time * 10) * 2 : 30;
-  g.ellipse(0, 0, width, 9).fill({ color: colors.shadow, alpha: 0.28 });
+  g.ellipse(0, 0, width, 9).fill({ color: t.colors.agent.shadow, alpha: 0.28 });
 }
 
 function drawAgentSprite(
@@ -1178,13 +1078,13 @@ function drawAgentSprite(
   g.rect(-15, localY - 14, 30, 10).fill({ color: palette.hair });
   g.rect(-16, localY - 6, 7, 17).fill({ color: palette.hair });
   g.rect(9, localY - 6, 7, 17).fill({ color: palette.hair });
-  g.rect(-6, localY - 1, 3, 3).fill({ color: colors.ink });
-  g.rect(5, localY - 1, 3, 3).fill({ color: colors.ink });
+  g.rect(-6, localY - 1, 3, 3).fill({ color: t.colors.agent.eye });
+  g.rect(5, localY - 1, 3, 3).fill({ color: t.colors.agent.eye });
 
   if (activity === "typing") {
     g.rect(-23, localY + 22 + Math.max(0, armSwing) * 2, 16, 6).fill({ color: palette.skin });
     g.rect(7, localY + 22 + Math.max(0, -armSwing) * 2, 16, 6).fill({ color: palette.skin });
-    g.rect(-20, localY + 30, 40, 6).fill({ color: 0x25222a });
+    g.rect(-20, localY + 30, 40, 6).fill({ color: t.colors.agent.keyboard });
   } else if (activity === "whiteboard") {
     const armY = localY + 5 + Math.sin(time * 5) * 10;
     g.rect(8 * side, armY, 23 * side, 6).fill({ color: palette.skin });
@@ -1193,33 +1093,33 @@ function drawAgentSprite(
   } else if (activity === "meeting") {
     g.rect(-24, localY + 20, 12, 7).fill({ color: palette.skin });
     g.rect(12, localY + 20, 12, 7).fill({ color: palette.skin });
-    g.circle(24 + Math.sin(time * 5) * 2, localY - 18, 3).fill({ color: 0xfff2cf, alpha: 0.7 });
-    g.circle(34 + Math.sin(time * 5 + 1) * 2, localY - 22, 3).fill({ color: 0xfff2cf, alpha: 0.7 });
+    g.circle(24 + Math.sin(time * 5) * 2, localY - 18, 3).fill({ color: t.colors.agent.meetingParticle, alpha: 0.7 });
+    g.circle(34 + Math.sin(time * 5 + 1) * 2, localY - 22, 3).fill({ color: t.colors.agent.meetingParticle, alpha: 0.7 });
   } else if (activity === "game") {
     g.rect(-24, localY + 22 + Math.sin(time * 9) * 2, 15, 6).fill({ color: palette.skin });
     g.rect(9, localY + 22 - Math.sin(time * 9) * 2, 15, 6).fill({ color: palette.skin });
-    g.rect(-14, localY + 30, 28, 8).fill({ color: 0x22252f });
-    g.circle(-6, localY + 34, 2).fill({ color: colors.red });
-    g.circle(7, localY + 34, 2).fill({ color: colors.blue });
+    g.rect(-14, localY + 30, 28, 8).fill({ color: t.colors.agent.gamepad });
+    g.circle(-6, localY + 34, 2).fill({ color: t.colors.accent.envRed });
+    g.circle(7, localY + 34, 2).fill({ color: t.colors.accent.envBlue });
   } else if (activity === "kitchen") {
     const bite = Math.max(0, Math.sin(time * 4));
     g.rect(-24, localY + 22, 14, 6).fill({ color: palette.skin });
     g.rect(9, localY + 22 - bite * 12, 15, 6).fill({ color: palette.skin });
-    g.rect(22, localY + 14 - bite * 12, 3, 12).fill({ color: 0xdce2dd });
-    g.circle(-1, localY + 33, 5).fill({ color: 0xf4c76b });
+    g.rect(22, localY + 14 - bite * 12, 3, 12).fill({ color: t.colors.agent.fork });
+    g.circle(-1, localY + 33, 5).fill({ color: t.colors.agent.snackBowl });
   } else if (activity === "ready") {
     g.rect(-25, localY + 18, 13, 6).fill({ color: palette.skin });
     g.rect(12, localY + 18, 13, 6).fill({ color: palette.skin });
-    g.rect(17, localY + 11, 18, 24).fill({ color: 0xfff2cf });
-    g.rect(21, localY + 17, 10, 2).fill({ color: colors.ink, alpha: 0.5 });
+    g.rect(17, localY + 11, 18, 24).fill({ color: t.colors.agent.readyClipboard });
+    g.rect(21, localY + 17, 10, 2).fill({ color: t.colors.text.ink, alpha: 0.5 });
     g.rect(-4, localY - 28 - Math.sin(time * 5) * 2, 8, 8).fill({ color: palette.accent });
   } else {
     g.rect(-24, localY + 19 + armSwing * 3, 13, 6).fill({ color: palette.skin });
     g.rect(11, localY + 19 - armSwing * 3, 13, 6).fill({ color: palette.skin });
   }
 
-  g.rect(-9, localY + 51, 10, 5).fill({ color: 0x1d1a18 });
-  g.rect(5, localY + 51, 10, 5).fill({ color: 0x1d1a18 });
+  g.rect(-9, localY + 51, 10, 5).fill({ color: t.colors.agent.shoe });
+  g.rect(5, localY + 51, 10, 5).fill({ color: t.colors.agent.shoe });
 }
 
 function thoughtFor(agent: AgentDefinition, time: number): string {
