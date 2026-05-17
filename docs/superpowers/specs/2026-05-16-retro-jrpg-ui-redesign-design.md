@@ -2,6 +2,18 @@
 
 Visual retheme of Agent Valley to match a late GBA / early DS-era retro handheld JRPG aesthetic. No behavior, interaction, or animation changes — purely visual.
 
+## Visual Reference
+
+![Pokemon Center interior](references/pokemon-center-inspo.png)
+
+Key takeaways from this reference:
+- Floor tiles are very light (near-white cream/pink) with subtle grid contrast
+- Menu panel uses thick dark outer border, white interior, dark text — classic RPG menu box
+- Furniture is simple colored blocks against the light floor, low saturation
+- Characters are the most saturated, highest-contrast elements in the scene
+- Walls barely contrast with floors — the environment reads as one calm, light surface
+- Large open empty space is a feature, not a problem
+
 ## Decisions
 
 - **Scope:** Full redesign — environment surfaces, UI chrome, agents, props, presentation screen
