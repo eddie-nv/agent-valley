@@ -1,12 +1,19 @@
 import { Application, Container, Graphics, Text } from "pixi.js";
-import { spriteRowFor, type SpriteRow, type Worker } from "@agent-valley/domain";
+import { spriteRowFor, type SpriteRow, type ValleySnapshot, type Worker } from "@agent-valley/domain";
+import { theme } from "../theme";
 import { MockValleyClient } from "../valley/mock-valley-client";
 import type { ValleyClient } from "../valley/valley-client";
 import { AgentSheet } from "./agent-sheet";
 import { PropSheet, type PropName } from "./prop-sheet";
-
-const WORLD_WIDTH = 960;
-const WORLD_HEIGHT = 540;
+import {
+  OFFICE_HEIGHT,
+  OFFICE_WIDTH,
+  WORLD_HEIGHT,
+  WORLD_WIDTH,
+  createShell,
+  officeFit,
+  type Shell
+} from "./shell";
 
 interface Point {
   readonly x: number;
@@ -19,7 +26,7 @@ interface Room {
   readonly y: number;
   readonly width: number;
   readonly height: number;
-  readonly color: number;
+  readonly floor: number;
 }
 
 interface PlacedProp {
@@ -27,12 +34,17 @@ interface PlacedProp {
   readonly at: Point;
 }
 
+const env = theme.colors.environment;
+
+const BOTTOM_ROOM_Y = 268;
+const BOTTOM_ROOM_HEIGHT = OFFICE_HEIGHT - BOTTOM_ROOM_Y - 24;
+
 const ROOMS: readonly Room[] = [
-  { label: "BOARDROOM", x: 24, y: 24, width: 300, height: 220, color: 0x4a5d4c },
-  { label: "MEETING ROOM", x: 348, y: 24, width: 270, height: 220, color: 0x5a5168 },
-  { label: "KITCHEN", x: 642, y: 24, width: 294, height: 220, color: 0x6f6a52 },
-  { label: "OPEN DESKS", x: 24, y: 268, width: 600, height: 248, color: 0x6b5340 },
-  { label: "GAME ROOM", x: 648, y: 268, width: 288, height: 248, color: 0x47406a }
+  { label: "BOARDROOM", x: 24, y: 24, width: 300, height: 220, floor: env.carpetA },
+  { label: "MEETING ROOM", x: 348, y: 24, width: 270, height: 220, floor: env.devSyncFloorA },
+  { label: "KITCHEN", x: 642, y: 24, width: 294, height: 220, floor: env.kitchenTileA },
+  { label: "OPEN DESKS", x: 24, y: BOTTOM_ROOM_Y, width: 600, height: BOTTOM_ROOM_HEIGHT, floor: env.floorA },
+  { label: "GAME ROOM", x: 648, y: BOTTOM_ROOM_Y, width: 288, height: BOTTOM_ROOM_HEIGHT, floor: env.gameRoomFloorA }
 ];
 
 const PROPS: readonly PlacedProp[] = [
@@ -68,10 +80,7 @@ function workerSlot(anchor: Point, index: number): Point {
   const perRow = 3;
   const column = index % perRow;
   const row = Math.floor(index / perRow);
-  return {
-    x: anchor.x + (column - 1) * 70,
-    y: anchor.y + row * 16
-  };
+  return { x: anchor.x + (column - 1) * 70, y: anchor.y + row * 16 };
 }
 
 function drawOffice(): Container {
@@ -79,20 +88,16 @@ function drawOffice(): Container {
   const g = new Graphics();
   layer.addChild(g);
 
-  g.rect(0, 0, WORLD_WIDTH, WORLD_HEIGHT).fill({ color: 0x16201c });
+  g.rect(0, 0, OFFICE_WIDTH, OFFICE_HEIGHT).fill({ color: env.officeBackground });
 
   for (const room of ROOMS) {
-    g.rect(room.x, room.y, room.width, room.height).fill({ color: room.color });
-    g.rect(room.x, room.y, room.width, room.height).stroke({ color: 0x101614, width: 4 });
+    g.rect(room.x - 6, room.y - 6, room.width + 12, room.height + 12).fill({ color: env.wallDark });
+    g.rect(room.x, room.y, room.width, room.height).fill({ color: room.floor });
 
     const plaque = new Text({
       text: room.label,
-      style: {
-        fontFamily: "\"Courier New\", monospace",
-        fontSize: 12,
-        fontWeight: "700",
-        fill: 0xfff2cf
-      }
+      style: theme.textStyles.plaque,
+      textureStyle: { scaleMode: "nearest" }
     });
     plaque.position.set(room.x + 10, room.y + 8);
     layer.addChild(plaque);
@@ -101,8 +106,16 @@ function drawOffice(): Container {
   return layer;
 }
 
+function isRunning(snapshot: ValleySnapshot): boolean {
+  return (
+    snapshot.pool.queue.inProgress > 0 ||
+    snapshot.tasks.some((task) => task.status === "in_progress")
+  );
+}
+
 class SpriteScene {
   private readonly root = new Container();
+  private readonly officeRoot = new Container();
   private readonly propLayer = new Container();
   private readonly agentLayer = new Container();
   private readonly workerSprites = new Map<string, ReturnType<AgentSheet["createSprite"]>>();
@@ -113,12 +126,19 @@ class SpriteScene {
     private readonly app: Application,
     private readonly agentSheet: AgentSheet,
     private readonly propSheet: PropSheet,
-    private readonly client: ValleyClient
+    private readonly client: ValleyClient,
+    private readonly shell: Shell
   ) {}
 
   public mount(): void {
     this.agentLayer.sortableChildren = true;
-    this.root.addChild(drawOffice(), this.propLayer, this.agentLayer);
+
+    const fit = officeFit();
+    this.officeRoot.scale.set(fit.scale);
+    this.officeRoot.position.set(fit.x, fit.y);
+    this.officeRoot.addChild(drawOffice(), this.propLayer, this.agentLayer);
+
+    this.root.addChild(this.shell.container, this.officeRoot);
     this.app.stage.addChild(this.root);
 
     for (const prop of PROPS) {
@@ -129,7 +149,7 @@ class SpriteScene {
 
     this.resize();
     this.app.renderer.on("resize", () => this.resize());
-    this.unsubscribe = this.client.subscribe((snapshot) => this.render(snapshot.workers));
+    this.unsubscribe = this.client.subscribe((snapshot) => this.render(snapshot));
   }
 
   public dispose(): void {
@@ -137,7 +157,13 @@ class SpriteScene {
     this.client.dispose();
   }
 
-  private render(workers: readonly Worker[]): void {
+  private render(snapshot: ValleySnapshot): void {
+    this.renderWorkers(snapshot.workers);
+    this.renderSidebar(snapshot);
+    this.shell.setStatus(isRunning(snapshot));
+  }
+
+  private renderWorkers(workers: readonly Worker[]): void {
     const seen = new Set<string>();
     const indexByLocation = new Map<Worker["location"], number>();
 
@@ -173,6 +199,29 @@ class SpriteScene {
     }
   }
 
+  private renderSidebar(snapshot: ValleySnapshot): void {
+    this.shell.sidebarBody.removeChildren();
+
+    const chief = snapshot.chatThreads.find((thread) => thread.kind === "chief");
+    const messages = chief?.messages.slice(-7) ?? [];
+    let y = 0;
+
+    for (const message of messages) {
+      const line = new Text({
+        text: `${message.author}: ${message.text}`,
+        style: {
+          ...theme.textStyles.uiBody,
+          fontSize: 13,
+          wordWrapWidth: this.shell.sidebarWidth
+        },
+        textureStyle: { scaleMode: "nearest" }
+      });
+      line.position.set(0, y);
+      this.shell.sidebarBody.addChild(line);
+      y += line.height + 12;
+    }
+  }
+
   private resize(): void {
     const scale = Math.min(
       this.app.renderer.width / WORLD_WIDTH,
@@ -187,12 +236,12 @@ class SpriteScene {
 }
 
 /**
- * Sprite-driven preview scene: loads the generated sheets and renders an
- * office whose characters are animated from the {@link MockValleyClient}
- * scenario. Kept separate from the procedural `office-world.ts`.
+ * Sprite-driven preview scene: the generated sheets rendered inside the same
+ * shell (sidebar + framed game panel) as the procedural office, with
+ * characters animated from the {@link MockValleyClient} scenario.
  */
 export async function createSpriteScene(app: Application): Promise<void> {
   const [agentSheet, propSheet] = await Promise.all([AgentSheet.load(), PropSheet.load()]);
-  const scene = new SpriteScene(app, agentSheet, propSheet, new MockValleyClient());
+  const scene = new SpriteScene(app, agentSheet, propSheet, new MockValleyClient(), createShell());
   scene.mount();
 }
