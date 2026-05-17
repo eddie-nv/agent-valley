@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
-import { mkdtempSync, rmSync } from "fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 import {
@@ -134,6 +134,31 @@ describe("Agent Valley API", () => {
     api.close();
   });
 
+  test("passes AG-UI POST requests through without buffering the stream", async () => {
+    const pool = new FakeAgentPool();
+    let observedMode: string | undefined;
+    const api = createAgentValleyApi({
+      agUiHandler: async (request) => {
+        const body = await request.json() as { forwardedProps?: { agentPool?: { mode?: string } } };
+        observedMode = body.forwardedProps?.agentPool?.mode;
+        return new Response(`data: ${JSON.stringify({ type: "RUN_STARTED" })}\n\n`, {
+          headers: { "content-type": "text/event-stream; charset=utf-8" }
+        });
+      },
+      now,
+      pool
+    });
+
+    const response = await api.fetch(agUiRequest({ forwardedProps: { agentPool: { mode: "observe" } } }));
+    const text = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("text/event-stream");
+    expect(observedMode).toBe("observe");
+    expect(text).toContain("RUN_STARTED");
+    api.close();
+  });
+
   test("smoke tests against a real temporary Agent Pool data dir", async () => {
     const dataDir = mkdtempSync(join(tmpdir(), "agent-valley-pool-"));
     cleanupFns.push(() => rmSync(dataDir, { force: true, recursive: true }));
@@ -163,6 +188,94 @@ describe("Agent Valley API", () => {
     const body = await session.json();
     expect(body.snapshot.pool.projectName).toBe("proj");
     expect(body.snapshot.tasks[0].prompt).toBe("Use the real pool");
+    api.close();
+  });
+
+  test("smoke tests Agent Pool AG-UI through the Agent Valley route", async () => {
+    const dataDir = mkdtempSync(join(tmpdir(), "agent-valley-ag-ui-"));
+    cleanupFns.push(() => rmSync(dataDir, { force: true, recursive: true }));
+
+    const agentPoolModuleName = "@agent-pool/tui/server";
+    const agentPoolAgUiModuleName = "@agent-pool/tui/ag-ui";
+    const { createAgentPoolServer } = (await import(agentPoolModuleName)) as {
+      createAgentPoolServer(options: Record<string, unknown>): AgentPoolServerLike & { close(): void };
+    };
+    const { createAgentPoolAgUiHandler } = (await import(agentPoolAgUiModuleName)) as {
+      createAgentPoolAgUiHandler(
+        pool: AgentPoolServerLike,
+        options?: { pollIntervalMs?: number }
+      ): (request: Request) => Promise<Response>;
+    };
+
+    const bootstrapPool = createAgentPoolServer({ daemonStatusTimeoutMs: 10, dataDir, toolDir: dataDir });
+    bootstrapPool.close();
+    seedDefaultProject(dataDir);
+
+    const pool = createAgentPoolServer({
+      daemonStatusTimeoutMs: 10,
+      dataDir,
+      projectName: "proj",
+      toolDir: dataDir
+    });
+    cleanupFns.push(() => pool.close());
+    const api = createAgentValleyApi({
+      agUiHandler: createAgentPoolAgUiHandler(pool, { pollIntervalMs: 10 }),
+      now,
+      pool,
+      projectName: "proj"
+    });
+
+    const observeResponse = await api.fetch(agUiRequest({ forwardedProps: { agentPool: { mode: "observe" } } }));
+    expect(observeResponse.headers.get("content-type")).toContain("text/event-stream");
+    const observeReader = observeResponse.body?.getReader();
+    if (!observeReader) throw new Error("Observe reader missing");
+    const observed = await readNextAgUiEvent(observeReader, (event) => event.type === "STATE_SNAPSHOT");
+    expect(observed.snapshot.tasks).toHaveLength(0);
+    await observeReader.cancel();
+
+    const dispatchResponse = await api.fetch(agUiRequest({
+      forwardedProps: { agentPool: { mode: "dispatch" } },
+      messages: [{ id: "message-1", role: "user", content: "AG-UI dispatch smoke" }]
+    }));
+    expect(dispatchResponse.headers.get("content-type")).toContain("text/event-stream");
+    const dispatchReader = dispatchResponse.body?.getReader();
+    if (!dispatchReader) throw new Error("Dispatch reader missing");
+    const created = await readNextAgUiEvent(
+      dispatchReader,
+      (event) => event.type === "CUSTOM" && event.name === "agent_pool.task_created"
+    );
+    const createdTaskId = String(created.value.taskId);
+    expect((await pool.getTaskDetail({ taskId: createdTaskId })).task.prompt).toContain("AG-UI dispatch smoke");
+    await dispatchReader.cancel();
+
+    const active = await pool.createTask({ projectName: "proj", prompt: "active feedback task" });
+    seedLockedClone(dataDir);
+    markTaskStatus(dataDir, active.task.id, "in_progress", "agent-00");
+    const feedbackResponse = await api.fetch(agUiRequest({
+      forwardedProps: { agentPool: { mode: "feedback", taskId: active.task.id } },
+      messages: [{ id: "message-2", role: "user", content: "Mailbox update" }]
+    }));
+    const feedbackReader = feedbackResponse.body?.getReader();
+    if (!feedbackReader) throw new Error("Feedback reader missing");
+    const delivered = await readNextAgUiEvent(
+      feedbackReader,
+      (event) => event.type === "CUSTOM" && event.name === "agent_pool.feedback_delivered"
+    );
+    expect(delivered.value.taskId).toBe(active.task.id);
+    expect(readFileSync(join(dataDir, "proj-00", ".mailbox"), "utf-8")).toBe("Mailbox update");
+    await readNextAgUiEvent(feedbackReader, (event) => event.type === "RUN_FINISHED");
+    await feedbackReader.cancel();
+
+    const reviewTask = await pool.createTask({ projectName: "proj", prompt: "review accept task" });
+    markTaskStatus(dataDir, reviewTask.task.id, "review_requested", "agent-00", "Ready for review.");
+    const reviewResponse = await api.fetch(agUiRequest({
+      forwardedProps: { agentPool: { decision: "accept", mode: "review", taskId: reviewTask.task.id } }
+    }));
+    const reviewReader = reviewResponse.body?.getReader();
+    if (!reviewReader) throw new Error("Review reader missing");
+    await readNextAgUiEvent(reviewReader, (event) => event.type === "RUN_FINISHED");
+    expect((await pool.getTaskDetail({ taskId: reviewTask.task.id })).task.status).toBe("completed");
+    await reviewReader.cancel();
     api.close();
   });
 });
@@ -287,7 +400,30 @@ function jsonRequest(url: string, body: unknown): Request {
   });
 }
 
+function agUiRequest(body: Record<string, unknown>): Request {
+  return new Request("http://localhost/api/ag-ui/agent-pool", {
+    body: JSON.stringify({
+      context: [],
+      messages: [],
+      runId: crypto.randomUUID(),
+      state: {},
+      threadId: crypto.randomUUID(),
+      tools: [],
+      ...body
+    }),
+    headers: { "content-type": "application/json" },
+    method: "POST"
+  });
+}
+
 async function readNextSnapshot(reader: ReadableStreamDefaultReader<Uint8Array>): Promise<any> {
+  return readNextAgUiEvent(reader, (event) => Boolean(event.snapshot));
+}
+
+async function readNextAgUiEvent(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  predicate: (event: any) => boolean
+): Promise<any> {
   const decoder = new TextDecoder();
   let buffer = "";
   const deadline = Date.now() + 2000;
@@ -302,12 +438,13 @@ async function readNextSnapshot(reader: ReadableStreamDefaultReader<Uint8Array>)
     for (const message of messages) {
       const dataLine = message.split("\n").find((line) => line.startsWith("data:"));
       if (dataLine) {
-        return JSON.parse(dataLine.slice("data:".length).trim());
+        const event = JSON.parse(dataLine.slice("data:".length).trim());
+        if (predicate(event)) return event;
       }
     }
   }
 
-  throw new Error("Timed out waiting for SSE snapshot");
+  throw new Error("Timed out waiting for SSE event");
 }
 
 function seedDefaultProject(dataDir: string): void {
@@ -315,6 +452,38 @@ function seedDefaultProject(dataDir: string): void {
   db.run(
     "INSERT INTO projects (name, source, prefix, branch, setup, is_default) VALUES (?, ?, ?, ?, ?, ?)",
     ["proj", "/tmp/source", "proj", "main", null, 1]
+  );
+  db.close();
+}
+
+function seedLockedClone(dataDir: string): void {
+  mkdirSync(join(dataDir, "proj-00"), { recursive: true });
+  const db = new Database(join(dataDir, "agent-pool.db"));
+  db.run(
+    "INSERT OR REPLACE INTO clones (project_name, clone_index, locked, workspace_id, locked_at, branch, workspace_ref) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    ["proj", 0, 1, "surface:1", now().toISOString(), "main", ""]
+  );
+  db.close();
+}
+
+function markTaskStatus(
+  dataDir: string,
+  taskId: string,
+  status: string,
+  claimedBy: string | null,
+  result: string | null = null
+): void {
+  const db = new Database(join(dataDir, "agent-pool.db"));
+  db.run(
+    "UPDATE tasks SET status = ?, claimed_by = ?, started_at = COALESCE(started_at, ?), completed_at = ?, result = COALESCE(?, result) WHERE id = ?",
+    [
+      status,
+      claimedBy,
+      now().toISOString(),
+      status === "in_progress" ? null : now().toISOString(),
+      result,
+      taskId
+    ]
   );
   db.close();
 }

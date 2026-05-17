@@ -1,5 +1,7 @@
+import type { ReviewPacket, ValleySnapshot, Worker, WorkerActivity } from "@agent-valley/domain";
 import { Application, Container, Graphics, Rectangle, Text, type TextStyleOptions, type Ticker } from "pixi.js";
 import { theme } from "./theme";
+import type { ValleyClientState, ValleyStore } from "./state/valley-store";
 
 const t = theme;
 
@@ -36,6 +38,7 @@ interface AgentPalette {
 }
 
 interface AgentDefinition {
+  id: string;
   name: string;
   palette: AgentPalette;
   spawn: Point;
@@ -56,10 +59,16 @@ interface AgentFrame {
 interface AgentStatus {
   agent: AgentDefinition;
   frame: AgentFrame;
+  worker: Worker | null;
+}
+
+interface OfficeWorldOptions {
+  store?: ValleyStore;
 }
 
 const agents: AgentDefinition[] = [
   {
+    id: "agent-00",
     name: "Ada",
     palette: { hair: 0x2d1b14, skin: 0xc88b63, shirt: 0x3f7cac, pants: 0x263a56, accent: 0xf2c14e },
     spawn: { x: 130, y: 640 },
@@ -70,6 +79,7 @@ const agents: AgentDefinition[] = [
     thoughts: ["fixing flaky test", "ship the patch", "check logs"]
   },
   {
+    id: "agent-01",
     name: "Bo",
     palette: { hair: 0x5a3825, skin: 0xd6a06f, shirt: 0x6b9f5a, pants: 0x2e4a3b, accent: 0xf0ede0 },
     spawn: { x: 220, y: 640 },
@@ -80,6 +90,7 @@ const agents: AgentDefinition[] = [
     thoughts: ["mapping states", "simpler flow", "draw the edge"]
   },
   {
+    id: "agent-02",
     name: "Cy",
     palette: { hair: 0x1d1b25, skin: 0xb87155, shirt: 0xb95f89, pants: 0x40334f, accent: 0x8fd1c7 },
     spawn: { x: 310, y: 640 },
@@ -90,6 +101,7 @@ const agents: AgentDefinition[] = [
     thoughts: ["align contract", "note the risk", "ask for scope"]
   },
   {
+    id: "agent-03",
     name: "Dee",
     palette: { hair: 0x403022, skin: 0xe0ad7b, shirt: 0xd47a3d, pants: 0x63432d, accent: 0x75b7f0 },
     spawn: { x: 400, y: 640 },
@@ -100,6 +112,7 @@ const agents: AgentDefinition[] = [
     thoughts: ["short break", "high score?", "one more round"]
   },
   {
+    id: "agent-04",
     name: "Eli",
     palette: { hair: 0x212222, skin: 0x986b55, shirt: 0x7b6ec8, pants: 0x2d2c44, accent: 0xffd37b },
     spawn: { x: 490, y: 640 },
@@ -110,6 +123,7 @@ const agents: AgentDefinition[] = [
     thoughts: ["snack deploy", "more coffee", "tiny sandwich"]
   },
   {
+    id: "agent-05",
     name: "Faye",
     palette: { hair: 0x7a3f2c, skin: 0xdfb08c, shirt: 0x5d9fb2, pants: 0x253e4b, accent: 0xf6edf8 },
     spawn: { x: 580, y: 640 },
@@ -121,8 +135,8 @@ const agents: AgentDefinition[] = [
   }
 ];
 
-export function createOfficeWorld(app: Application): void {
-  const world = new OfficeWorld(app);
+export function createOfficeWorld(app: Application, options: OfficeWorldOptions = {}): void {
+  const world = new OfficeWorld(app, options);
   world.mount();
 }
 
@@ -141,12 +155,16 @@ class OfficeWorld {
   private readonly officeMask = new Graphics();
   private readonly agentViews: AgentView[];
   private readonly agentStatuses = new Map<string, AgentStatus>();
+  private readonly workers = new Map<string, Worker>();
+  private snapshot: ValleySnapshot | null = null;
+  private presentationReview: ReviewPacket | null = null;
+  private unsubscribeStore: (() => void) | null = null;
   private elapsed = 0;
   private officeScale = 1;
   private officeX = 0;
   private officeY = 0;
   private activeTab = "chief";
-  private hoveredAgent?: string;
+  private hoveredAgentId?: string;
   private readonly handleKeyDown = (event: KeyboardEvent): void => {
     const key = event.key.toLowerCase();
 
@@ -159,30 +177,45 @@ class OfficeWorld {
     }
   };
 
-  public constructor(private readonly app: Application) {
+  public constructor(
+    private readonly app: Application,
+    options: OfficeWorldOptions = {}
+  ) {
+    const store = options.store;
+    if (store) {
+      const initialState = store.getState();
+      this.applyStoreState(initialState);
+      this.unsubscribeStore = store.subscribe((state) => this.applyStoreState(state));
+    }
+
     this.agentViews = agents.map((agent) => {
       const view = new AgentView(agent);
       view.container.eventMode = "dynamic";
       view.container.cursor = "pointer";
       view.container.hitArea = new Rectangle(-28, -82, 56, 92);
       view.container.on("pointerover", () => {
-        this.hoveredAgent = agent.name;
+        this.hoveredAgentId = agent.id;
       });
       view.container.on("pointerout", () => {
-        if (this.hoveredAgent === agent.name) {
-          this.hoveredAgent = undefined;
+        if (this.hoveredAgentId === agent.id) {
+          this.hoveredAgentId = undefined;
         }
       });
       view.container.on("pointertap", () => {
-        this.selectAgent(agent.name);
+        this.selectAgent(agent.id);
       });
       return view;
     });
   }
 
+  public destroy(): void {
+    this.unsubscribeStore?.();
+    this.unsubscribeStore = null;
+    window.removeEventListener("keydown", this.handleKeyDown);
+  }
+
   public mount(): void {
     this.agentLayer.sortableChildren = true;
-    this.officeMask.renderable = false;
     this.officeRoot.addChild(this.staticLayer, this.dynamicLayer, this.agentLayer);
     this.officeViewport.addChild(this.officeRoot);
     this.officeViewport.mask = this.officeMask;
@@ -230,13 +263,31 @@ class OfficeWorld {
       .fill({ color: 0xffffff });
   }
 
+  private applyStoreState(state: ValleyClientState): void {
+    this.snapshot = state.snapshot;
+    this.presentationReview = state.ui.presentation;
+    this.workers.clear();
+
+    for (const worker of state.snapshot?.workers ?? []) {
+      this.workers.set(worker.id, worker);
+    }
+  }
+
   private isTaskRunning(time: number): boolean {
+    if (this.snapshot) {
+      return this.snapshot.tasks.some((task) => task.status === "pending" || task.status === "in_progress");
+    }
+
     return (time >= 4 && time < PRESENTATION_START) || time >= PRESENTATION_END;
   }
 
-  private selectAgent(agentName: string): void {
+  private isPresenting(time: number): boolean {
+    return Boolean(this.presentationReview) || (!this.snapshot && time >= PRESENTATION_START && time < PRESENTATION_END);
+  }
+
+  private selectAgent(agentId: string): void {
     if (this.isTaskRunning(this.elapsed)) {
-      this.activeTab = agentName;
+      this.activeTab = agentId;
     }
   }
 
@@ -244,7 +295,7 @@ class OfficeWorld {
     const deltaSeconds = Math.min(ticker.deltaMS / 1000, 0.05);
     this.elapsed = (this.elapsed + deltaSeconds) % LOOP_SECONDS;
     const time = this.elapsed;
-    const presenting = time >= PRESENTATION_START && time < PRESENTATION_END;
+    const presenting = this.isPresenting(time);
 
     this.shellLayer.visible = !presenting;
     this.gameFrameLayer.visible = !presenting;
@@ -254,7 +305,7 @@ class OfficeWorld {
     this.presentationLayer.visible = presenting;
 
     if (presenting) {
-      this.drawPresentation(time - PRESENTATION_START);
+      this.drawPresentation(Math.max(0, time - PRESENTATION_START));
       return;
     }
 
@@ -265,12 +316,14 @@ class OfficeWorld {
     this.agentStatuses.clear();
 
     this.agentViews.forEach((agentView, index) => {
-      const frame = this.getAgentFrame(agentView.definition, index, time, activeBubbleIndex);
+      const worker = this.workers.get(agentView.definition.id) ?? null;
+      const frame = this.getAgentFrame(agentView.definition, index, time, activeBubbleIndex, worker);
       agentView.update(frame, time);
       agentView.container.zIndex = Math.floor(frame.position.y);
-      this.agentStatuses.set(agentView.definition.name, {
+      this.agentStatuses.set(agentView.definition.id, {
         agent: agentView.definition,
-        frame
+        frame,
+        worker
       });
     });
     if (!this.isTaskRunning(time) && this.activeTab !== "chief") {
@@ -335,12 +388,12 @@ class OfficeWorld {
       const row = Math.floor(index / 2);
       this.drawTab(
         panel,
-        agent.name,
+        agent.id,
         agent.name.toUpperCase(),
         CHAT_X + 18 + column * 146,
         CHAT_Y + 154 + row * 42,
         136,
-        this.activeTab === agent.name,
+        this.activeTab === agent.id,
         taskRunning
       );
     });
@@ -393,19 +446,35 @@ class OfficeWorld {
       fill: t.colors.text.heading,
       stroke: { color: t.colors.text.chiefChatStroke, width: 4 }
     });
-    addText(panel, "Six workers. Hey, how you doing?", CHAT_X + 42, CHAT_Y + 358, {
-      ...t.textStyles.uiBody,
-      wordWrapWidth: 242
-    });
+    const chiefMessages = this.snapshot?.chatThreads.find((thread) => thread.kind === "chief")?.messages ?? [];
+    const latestMessages = chiefMessages.slice(-3);
 
-    const message = taskRunning
-      ? "I gave the crew a task. Hover a worker in the office to read their pop-up, then pick View More."
-      : "When I assign a task, worker tabs unlock and the office comes alive.";
-    addText(panel, message, CHAT_X + 42, CHAT_Y + 434, {
-      ...t.textStyles.uiBody,
-      fill: t.colors.text.info,
-      wordWrapWidth: 242
-    });
+    if (latestMessages.length > 0) {
+      latestMessages.forEach((message, index) => {
+        addText(panel, `${message.author}:`, CHAT_X + 42, CHAT_Y + 358 + index * 68, {
+          ...t.textStyles.uiTiny,
+          fill: message.role === "user" ? t.colors.text.statusWaiting : t.colors.text.statusActive
+        });
+        addText(panel, message.text, CHAT_X + 42, CHAT_Y + 378 + index * 68, {
+          ...t.textStyles.uiBody,
+          wordWrapWidth: 242
+        });
+      });
+    } else {
+      addText(panel, "Six workers. Hey, how you doing?", CHAT_X + 42, CHAT_Y + 358, {
+        ...t.textStyles.uiBody,
+        wordWrapWidth: 242
+      });
+
+      const message = taskRunning
+        ? "I gave the crew a task. Hover a worker in the office to read their pop-up, then pick View More."
+        : "When I assign a task, worker tabs unlock and the office comes alive.";
+      addText(panel, message, CHAT_X + 42, CHAT_Y + 434, {
+        ...t.textStyles.uiBody,
+        fill: t.colors.text.info,
+        wordWrapWidth: 242
+      });
+    }
 
     panel.rect(CHAT_X + 42, CHAT_Y + 604, 236, 38).fill({ color: taskRunning ? t.colors.ui.buttonActiveBg : t.colors.ui.buttonDisabledBg });
     panel.rect(CHAT_X + 48, CHAT_Y + 610, 224, 26).fill({ color: taskRunning ? t.colors.ui.buttonActiveInner : t.colors.ui.buttonDisabledInner });
@@ -420,24 +489,25 @@ class OfficeWorld {
 
   private drawAgentChat(panel: Graphics, status: AgentStatus, time: number): void {
     const agent = status.agent;
+    const worker = status.worker;
     addText(panel, `${agent.name}'S TAB`, CHAT_X + 42, CHAT_Y + 320, {
       ...t.textStyles.uiTitle,
       fill: t.colors.text.heading,
       stroke: { color: t.colors.text.chiefChatStroke, width: 4 }
     });
     drawMiniAgent(panel, CHAT_X + 78, CHAT_Y + 404, agent.palette, time);
-    addText(panel, `Doing: ${activityLabel(status.frame.activity)}`, CHAT_X + 122, CHAT_Y + 374, {
+    addText(panel, `Doing: ${worker ? workerActivityLabel(worker) : activityLabel(status.frame.activity)}`, CHAT_X + 122, CHAT_Y + 374, {
       ...t.textStyles.uiBody,
       wordWrapWidth: 160
     });
-    addText(panel, `Thinking: ${thoughtFor(agent, time)}`, CHAT_X + 122, CHAT_Y + 438, {
+    addText(panel, `Thinking: ${worker?.thought ?? thoughtFor(agent, time)}`, CHAT_X + 122, CHAT_Y + 438, {
       ...t.textStyles.uiBody,
       fill: t.colors.text.info,
       wordWrapWidth: 150
     });
     panel.rect(CHAT_X + 42, CHAT_Y + 546, 236, 72).fill({ color: t.colors.ui.notesPanelBg });
-    addText(panel, "Current note", CHAT_X + 58, CHAT_Y + 562, t.textStyles.uiTiny);
-    addText(panel, "Keep the work moving and report back in the boardroom.", CHAT_X + 58, CHAT_Y + 584, {
+    addText(panel, worker?.taskTitle ?? "Current note", CHAT_X + 58, CHAT_Y + 562, t.textStyles.uiTiny);
+    addText(panel, worker?.lastTool ?? "Keep the work moving and report back in the boardroom.", CHAT_X + 58, CHAT_Y + 584, {
       ...t.textStyles.uiSmall,
       fontSize: 12,
       wordWrap: true,
@@ -448,11 +518,11 @@ class OfficeWorld {
   private drawHoverPopup(time: number): void {
     this.hoverLayer.removeChildren();
 
-    if (!this.hoveredAgent || !this.isTaskRunning(time)) {
+    if (!this.hoveredAgentId || !this.isTaskRunning(time)) {
       return;
     }
 
-    const status = this.agentStatuses.get(this.hoveredAgent);
+    const status = this.agentStatuses.get(this.hoveredAgentId);
     if (!status) {
       return;
     }
@@ -472,11 +542,11 @@ class OfficeWorld {
       ...t.textStyles.uiSmall,
       fill: t.colors.text.heading
     });
-    addText(popup, activityLabel(status.frame.activity), x + 18, y + 44, {
+    addText(popup, status.worker ? workerActivityLabel(status.worker) : activityLabel(status.frame.activity), x + 18, y + 44, {
       ...t.textStyles.uiTiny,
       fill: t.colors.text.statusActive
     });
-    addText(popup, thoughtFor(status.agent, time), x + 18, y + 66, {
+    addText(popup, status.worker?.thought ?? thoughtFor(status.agent, time), x + 18, y + 66, {
       ...t.textStyles.uiTiny,
       fill: t.colors.text.primary,
       wordWrap: true,
@@ -494,7 +564,7 @@ class OfficeWorld {
     button.eventMode = "static";
     button.cursor = "pointer";
     button.hitArea = new Rectangle(x + 116, y + 92, 86, 24);
-    button.on("pointertap", () => this.selectAgent(status.agent.name));
+    button.on("pointertap", () => this.selectAgent(status.agent.id));
     popup.addChild(button);
   }
 
@@ -502,8 +572,13 @@ class OfficeWorld {
     agent: AgentDefinition,
     index: number,
     time: number,
-    activeBubbleIndex: number
+    activeBubbleIndex: number,
+    worker: Worker | null
   ): AgentFrame {
+    if (this.snapshot && worker) {
+      return this.getLiveAgentFrame(agent, index, time, activeBubbleIndex, worker);
+    }
+
     const stationPoint = floatPoint(agent.station, time, agent.activity, index);
     const boardroomPoint = floatPoint(agent.boardroom, time, "ready", index);
 
@@ -561,6 +636,26 @@ class OfficeWorld {
       activity: agent.activity,
       facing: facingFor(agent.activity, index),
       position: stationPoint
+    };
+  }
+
+  private getLiveAgentFrame(
+    agent: AgentDefinition,
+    index: number,
+    time: number,
+    activeBubbleIndex: number,
+    worker: Worker
+  ): AgentFrame {
+    const activity = toPixiActivity(worker.activity);
+    const target = pointForWorker(agent, index, worker);
+    const working = worker.status === "working";
+    const bubble = working && activeBubbleIndex === index ? worker.thought : undefined;
+
+    return {
+      activity,
+      bubble,
+      facing: facingFor(activity, index),
+      position: floatPoint(target, time, activity, index)
     };
   }
 
@@ -681,6 +776,7 @@ class OfficeWorld {
     this.presentationLayer.removeChildren();
     const g = new Graphics();
     this.presentationLayer.addChild(g);
+    const review = this.presentationReview;
 
     const pulse = 0.5 + Math.sin(time * 3) * 0.5;
 
@@ -693,7 +789,7 @@ class OfficeWorld {
     g.rect(112, 100, 1056, 4).fill({ color: t.colors.ui.presentationProgressGlow, alpha: 0.4 + pulse * 0.35 });
 
     const title = new Text({
-      text: "Agent session complete",
+      text: review ? (review.status === "accepted" ? "Review accepted" : "Review requested") : "Agent session complete",
       style: t.textStyles.presentationTitle,
       textureStyle: { scaleMode: "nearest" }
     });
@@ -701,16 +797,24 @@ class OfficeWorld {
     this.presentationLayer.addChild(title);
 
     const summary = new Text({
-      text: "Summary\n- Implemented office task loop\n- Generated activity visuals\n- Prepared review packet",
+      text: review ? `Task ${review.taskId}\n${shorten(review.summary, 320)}` : "Summary\n- Implemented office task loop\n- Generated activity visuals\n- Prepared review packet",
       style: { ...t.textStyles.presentationBody, lineHeight: 31 },
       textureStyle: { scaleMode: "nearest" }
     });
     summary.position.set(132, 218);
     this.presentationLayer.addChild(summary);
 
-    drawFileCard(g, 574, 214, "src/office-world.ts", "Pixi office scene", t.colors.fileCardAccentCyan);
-    drawFileCard(g, 574, 330, "src/main.ts", "Canvas bootstrap", t.colors.fileCardAccentGold);
-    drawFileCard(g, 574, 446, "src/styles.css", "Pixel rendering", t.colors.fileCardAccentPink);
+    const files = review?.files.length
+      ? review.files
+      : [
+          { path: "agent-docs/reviews", summary: "Review manifest or fallback summary" },
+          { path: "Agent Pool", summary: "Awaiting review artifacts" },
+          { path: "Task state", summary: review?.status ?? "Ready" }
+        ];
+    const fileAccents = [t.colors.fileCardAccentCyan, t.colors.fileCardAccentGold, t.colors.fileCardAccentPink];
+    files.slice(0, 3).forEach((file, index) => {
+      drawFileCard(g, 574, 214 + index * 116, file.path, file.summary, fileAccents[index] ?? t.colors.fileCardAccentCyan);
+    });
 
     for (let index = 0; index < 5; index += 1) {
       const y = 542 + index * 18;
@@ -821,6 +925,65 @@ function activityLabel(activity: Activity): string {
   };
 
   return labels[activity];
+}
+
+function workerActivityLabel(worker: Worker): string {
+  if (worker.status === "offline") return "Offline";
+  if (worker.status === "stale") return "Last heartbeat is stale";
+  return activityLabel(toPixiActivity(worker.activity));
+}
+
+function toPixiActivity(activity: WorkerActivity): Activity {
+  if (activity === "offline") return "ready";
+  return activity;
+}
+
+function pointForWorker(agent: AgentDefinition, index: number, worker: Worker): Point {
+  if (
+    worker.status === "offline"
+    || worker.status === "stale"
+    || worker.location === "offscreen"
+    || worker.location === "needs_attention"
+  ) {
+    return {
+      x: 94 + index * 34,
+      y: 704
+    };
+  }
+
+  if (worker.status === "working") {
+    if (worker.location === "computer") return agent.station;
+    if (worker.location === "whiteboard") return agent.boardroom;
+    if (worker.location === "boardroom") return agent.boardroom;
+    if (worker.location === "kitchen") return kitchenPoint(index);
+    if (worker.location === "game_room") return gameRoomPoint(index);
+    return agent.station;
+  }
+
+  if (worker.location === "computer") return agent.station;
+  if (worker.location === "whiteboard") return agent.boardroom;
+  if (worker.location === "kitchen") return kitchenPoint(index);
+  if (worker.location === "game_room") return gameRoomPoint(index);
+  if (worker.location === "boardroom") return agent.boardroom;
+  return agent.spawn;
+}
+
+function kitchenPoint(index: number): Point {
+  const points: Point[] = [
+    { x: 814, y: 184 },
+    { x: 872, y: 178 },
+    { x: 918, y: 204 }
+  ];
+  return points[index % points.length] ?? { x: 814, y: 184 };
+}
+
+function gameRoomPoint(index: number): Point {
+  const points: Point[] = [
+    { x: 1068, y: 154 },
+    { x: 1132, y: 154 },
+    { x: 1116, y: 224 }
+  ];
+  return points[index % points.length] ?? { x: 1068, y: 154 };
 }
 
 function drawRoom(g: Graphics, x: number, y: number, width: number, height: number, floor: number, label: string): void {
@@ -1173,6 +1336,12 @@ function lerp(start: number, end: number, progress: number): number {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
+}
+
+function shorten(value: string, maxLength: number): string {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  if (normalized.length <= maxLength) return normalized;
+  return `${normalized.slice(0, Math.max(0, maxLength - 3))}...`;
 }
 
 function lighten(color: number, amount: number): number {

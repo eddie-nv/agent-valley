@@ -13,14 +13,23 @@ export type WorkerActivity =
 export type ChatMessageRole = "user" | "chief" | "worker" | "system";
 export type ChatThreadKind = "chief" | "task";
 export type ReviewStatus = "ready" | "accepted";
-export type ValleyTaskStatus = "pending" | "in_progress" | "completed" | "blocked" | "backlogged" | "cancelled";
+export type ValleyTaskStatus = "pending" | "in_progress" | "review_requested" | "completed" | "blocked" | "backlogged" | "cancelled";
 
 export interface Worker {
   id: string;
   name: string;
   status: WorkerStatus;
   activity: WorkerActivity;
-  location: "open_desks" | "boardroom" | "meeting_room" | "kitchen" | "game_room";
+  location:
+    | "open_desks"
+    | "boardroom"
+    | "meeting_room"
+    | "computer"
+    | "whiteboard"
+    | "kitchen"
+    | "game_room"
+    | "offscreen"
+    | "needs_attention";
   taskId: string | null;
   taskTitle: string | null;
   thought: string;

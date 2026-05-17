@@ -1,5 +1,7 @@
 import { Application } from "pixi.js";
+import { createAgentValleyClient } from "./api/agent-valley-client";
 import { createOfficeWorld } from "./office-world";
+import { createValleyStore } from "./state/valley-store";
 import "./styles.css";
 
 const app = document.querySelector<HTMLDivElement>("#app");
@@ -20,4 +22,9 @@ await pixi.init({
 
 app.append(pixi.canvas);
 
-createOfficeWorld(pixi);
+const valleyStore = createValleyStore({
+  client: createAgentValleyClient()
+});
+
+createOfficeWorld(pixi, { store: valleyStore });
+void valleyStore.start();

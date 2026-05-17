@@ -14,7 +14,7 @@ import type {
 } from "@agent-valley/domain";
 
 type RetryStrategy = "same" | "augmented" | "escalate";
-type AgentPoolTaskStatus = "pending" | "in_progress" | "completed" | "blocked" | "backlogged" | "cancelled";
+type AgentPoolTaskStatus = "pending" | "in_progress" | "review_requested" | "completed" | "blocked" | "backlogged" | "cancelled";
 type AgentPoolAgentStatus = "working" | "idle" | "offline" | "stale";
 
 export interface AgentPoolProject {
@@ -101,7 +101,10 @@ export interface AgentPoolServerLike {
   readTaskLog(input: { taskId: string; tailLines?: number }): Promise<TaskLogReadResult>;
 }
 
+export type AgentPoolAgUiHandler = (request: Request) => Response | Promise<Response>;
+
 export interface CreateAgentValleyApiOptions {
+  agUiHandler?: AgentPoolAgUiHandler;
   pool: AgentPoolServerLike;
   projectName?: string;
   now?: () => Date;
@@ -233,6 +236,7 @@ export function createAgentValleyApi(options: CreateAgentValleyApiOptions): Agen
 
       try {
         return await routeRequest(request, {
+          agUiHandler: options.agUiHandler,
           now,
           pool: options.pool,
           projectName,
@@ -255,6 +259,7 @@ export function createAgentValleyApi(options: CreateAgentValleyApiOptions): Agen
 async function routeRequest(
   request: Request,
   context: {
+    agUiHandler?: AgentPoolAgUiHandler;
     now: () => Date;
     pool: AgentPoolServerLike;
     projectName?: string;
@@ -267,6 +272,14 @@ async function routeRequest(
 
   if (request.method === "GET" && url.pathname === "/health") {
     return json({ ok: true, service: "agent-valley-api" });
+  }
+
+  if (url.pathname === "/api/ag-ui/agent-pool") {
+    if (!context.agUiHandler) {
+      return json({ error: "Agent Pool AG-UI handler is not configured" }, 501);
+    }
+
+    return await context.agUiHandler(request);
   }
 
   if (request.method === "GET" && url.pathname === "/api/session") {
@@ -406,7 +419,7 @@ export async function createValleySnapshot(
   const acceptedReviewIds = new Set(state.acceptedReviews.keys());
   const readyReviews = await Promise.all(
     poolSnapshot.tasks
-      .filter((task) => task.status === "completed" && !acceptedReviewIds.has(task.id))
+      .filter((task) => (task.status === "completed" || task.status === "review_requested") && !acceptedReviewIds.has(task.id))
       .map((task) => createReviewPacket(pool, task.id, "ready", generatedAt).catch(() => null))
   );
   const reviewQueue = [
