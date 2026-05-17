@@ -1174,26 +1174,26 @@ function drawTinyFileStack(g: Graphics, x: number, y: number): void {
 
 function drawFileCard(g: Graphics, x: number, y: number, filename: string, description: string, accent: number): void {
   g.rect(x, y, 500, 84).fill({ color: t.colors.ui.presentationFileCardBg });
-  g.rect(x + 12, y + 12, 52, 60).fill({ color: t.colors.ui.presentationFileIconBg });
-  g.rect(x + 44, y + 12, 20, 20).fill({ color: t.colors.ui.presentationFileIconCorner });
-  g.rect(x + 76, y + 20, 300, 12).fill({ color: accent });
-  g.rect(x + 76, y + 46, 386, 9).fill({ color: t.colors.ui.presentationFileDetailA });
-  g.rect(x + 76, y + 62, 226, 7).fill({ color: t.colors.ui.presentationFileDetailB });
+  g.rect(x, y, 8, 84).fill({ color: accent });
+  g.rect(x + 24, y + 14, 52, 56).fill({ color: t.colors.ui.presentationFileIconBg });
+  g.rect(x + 56, y + 14, 20, 20).fill({ color: t.colors.ui.presentationFileIconCorner });
 
   const fileText = new Text({
-    text: filename,
+    text: shorten(filename, 44),
     style: { ...t.textStyles.presentationBody, fontSize: 15, fill: t.colors.text.presentationFileTitle },
     textureStyle: { scaleMode: "nearest" }
   });
-  fileText.position.set(x + 82, y + 14);
+  fileText.position.set(x + 92, y + 15);
   g.addChild(fileText);
 
+  g.rect(x + 92, y + 38, 320, 3).fill({ color: accent });
+
   const descText = new Text({
-    text: description,
+    text: shorten(description, 52),
     style: { ...t.textStyles.presentationBody, fontSize: 13, fill: t.colors.text.presentationFileDesc },
     textureStyle: { scaleMode: "nearest" }
   });
-  descText.position.set(x + 82, y + 38);
+  descText.position.set(x + 92, y + 47);
   g.addChild(descText);
 }
 
