@@ -11,6 +11,7 @@
     "test": "bun test src --pass-with-no-tests"
   },
   "dependencies": {
+    "@agent-pool/tui": "file:../../../agent-pool/v2",
     "@agent-valley/domain": "workspace:*"
   }
 }
