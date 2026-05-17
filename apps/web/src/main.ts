@@ -1,6 +1,8 @@
 import { Application } from "pixi.js";
+import { createAgentValleyClient } from "./api/agent-valley-client";
 import { createOfficeWorld } from "./office-world";
 import { createSpriteScene } from "./sprite-scene/sprite-scene";
+import { createValleyStore } from "./state/valley-store";
 import "./styles.css";
 
 const app = document.querySelector<HTMLDivElement>("#app");
@@ -21,11 +23,13 @@ await pixi.init({
 
 app.append(pixi.canvas);
 
-// `?scene=office` shows the procedural prototype; default is the sprite scene.
+// `?scene=office` shows the procedural store-backed office; default is the sprite scene.
 const scene = new URLSearchParams(window.location.search).get("scene");
 
 if (scene === "office") {
-  createOfficeWorld(pixi);
+  const valleyStore = createValleyStore({ client: createAgentValleyClient() });
+  createOfficeWorld(pixi, { store: valleyStore });
+  void valleyStore.start();
 } else {
   await createSpriteScene(pixi);
 }

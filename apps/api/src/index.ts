@@ -8,32 +8,50 @@ type AgentPoolServerOptions = {
 };
 
 type AgentPoolModule = {
-  createAgentPoolServer(options?: AgentPoolServerOptions): AgentPoolServerLike;
+  createAgentPoolServer(options?: AgentPoolServerOptions): AgentPoolServerLike & { close(): void };
+};
+
+type AgentPoolAgUiModule = {
+  createAgentPoolAgUiHandler(pool: AgentPoolServerLike): (request: Request) => Promise<Response>;
 };
 
 const port = Number(Bun.env.PORT ?? 3001);
 const projectName = Bun.env.AGENT_POOL_PROJECT?.trim() || undefined;
 const poolMode = Bun.env.AGENT_VALLEY_POOL_MODE?.trim() || "auto";
 const agentPoolModuleName = "@agent-pool/tui/server";
+const agentPoolAgUiModuleName = "@agent-pool/tui/ag-ui";
 const { createAgentPoolServer } = (await import(agentPoolModuleName)) as AgentPoolModule;
+const { createAgentPoolAgUiHandler } = (await import(agentPoolAgUiModuleName)) as AgentPoolAgUiModule;
 const realPool = createAgentPoolServer({
   dataDir: Bun.env.AGENT_POOL_DATA_DIR?.trim() || undefined,
   projectName,
   toolDir: Bun.env.AGENT_POOL_TOOL_DIR?.trim() || undefined
 });
+const agUiHandler = createAgentPoolAgUiHandler(realPool);
 const pool = await selectPool(realPool, {
   mode: poolMode,
   projectName
 });
 const api = createAgentValleyApi({
+  agUiHandler,
   pool,
   projectName
 });
 
-Bun.serve({
+const server = Bun.serve({
   fetch: api.fetch,
   port
 });
+
+for (const signal of ["SIGINT", "SIGTERM"] as const) {
+  process.once(signal, () => {
+    api.close();
+    closePool(pool);
+    if (pool !== realPool) closePool(realPool);
+    server.stop(true);
+    process.exit(0);
+  });
+}
 
 console.log(`Agent Valley API listening on http://localhost:${port}`);
 
@@ -49,7 +67,6 @@ async function selectPool(
   }
 
   if (options.mode === "demo") {
-    closePool(realPool);
     console.log("Agent Valley API using demo pool.");
     return createDemoAgentPoolServer({ projectName: options.projectName });
   }
@@ -58,7 +75,6 @@ async function selectPool(
     await realPool.getSnapshot({ projectName: options.projectName });
     return realPool;
   } catch (error) {
-    closePool(realPool);
     console.log(`Agent Valley API using demo pool: ${errorMessage(error)}`);
     return createDemoAgentPoolServer({ projectName: options.projectName });
   }

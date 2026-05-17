@@ -12,6 +12,7 @@
     "test": "bun test src --pass-with-no-tests"
   },
   "dependencies": {
+    "@ag-ui/client": "0.0.53",
     "@agent-valley/domain": "workspace:*",
     "pixi.js": "^8.14.3"
   }
