@@ -1,0 +1,16 @@
+{
+  "name": "@agent-valley/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "build": "bun build src/index.ts --outdir dist --target bun",
+    "start": "bun src/index.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "bun test src --pass-with-no-tests"
+  },
+  "dependencies": {
+    "@agent-valley/domain": "workspace:*"
+  }
+}

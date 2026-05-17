@@ -1,0 +1,17 @@
+{
+  "name": "@agent-valley/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc --noEmit -p tsconfig.json && vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "bun test src --pass-with-no-tests"
+  },
+  "dependencies": {
+    "@agent-valley/domain": "workspace:*",
+    "pixi.js": "^8.14.3"
+  }
+}
