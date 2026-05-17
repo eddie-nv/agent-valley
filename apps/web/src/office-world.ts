@@ -14,7 +14,6 @@ const GAME_X = 366;
 const GAME_Y = 24;
 const GAME_WIDTH = 888;
 const GAME_HEIGHT = 672;
-const GAME_HEADER_HEIGHT = 62;
 const GAME_INSET = 18;
 const PRESENTATION_START = 38;
 const PRESENTATION_END = 52;
@@ -217,16 +216,16 @@ class OfficeWorld {
 
   private layoutOfficeViewport(): void {
     const contentWidth = GAME_WIDTH - GAME_INSET * 2;
-    const contentHeight = GAME_HEIGHT - GAME_HEADER_HEIGHT - GAME_INSET * 2;
+    const contentHeight = GAME_HEIGHT - GAME_INSET * 2;
     this.officeScale = Math.min(contentWidth / WORLD_WIDTH, contentHeight / WORLD_HEIGHT);
     this.officeX = GAME_X + GAME_INSET;
-    this.officeY = GAME_Y + GAME_HEADER_HEIGHT + GAME_INSET + Math.floor((contentHeight - WORLD_HEIGHT * this.officeScale) / 2);
+    this.officeY = GAME_Y + GAME_INSET + Math.floor((contentHeight - WORLD_HEIGHT * this.officeScale) / 2);
 
     this.officeRoot.scale.set(this.officeScale);
     this.officeRoot.position.set(this.officeX, this.officeY);
     this.officeMask
       .clear()
-      .rect(GAME_X + GAME_INSET, GAME_Y + GAME_HEADER_HEIGHT + GAME_INSET, contentWidth, contentHeight)
+      .rect(GAME_X + GAME_INSET, GAME_Y + GAME_INSET, contentWidth, contentHeight)
       .fill({ color: 0xffffff });
   }
 
@@ -289,23 +288,12 @@ class OfficeWorld {
     this.shellLayer.addChild(shell);
     this.gameFrameLayer.addChild(game);
 
-    drawTileFloor(shell, 0, 0, WORLD_WIDTH, WORLD_HEIGHT, t.colors.ui.shellTileA, t.colors.ui.shellTileB);
-    shell.rect(0, 0, WORLD_WIDTH, WORLD_HEIGHT).fill({ color: t.colors.ui.shellOverlay, alpha: 0.08 });
+    shell.rect(0, 0, WORLD_WIDTH, WORLD_HEIGHT).fill({ color: t.colors.ui.shellTileA });
 
     drawPixelPanel(shell, CHAT_X, CHAT_Y, CHAT_WIDTH, CHAT_HEIGHT);
     drawPixelPanel(game, GAME_X, GAME_Y, GAME_WIDTH, GAME_HEIGHT);
 
-    game.rect(GAME_X + 14, GAME_Y + 14, GAME_WIDTH - 28, 42).fill({ color: t.colors.ui.gameHeaderOuter });
-    game.rect(GAME_X + 18, GAME_Y + 18, GAME_WIDTH - 36, 34).fill({ color: t.colors.ui.gameHeaderInner });
-    addText(game, "AGENT VALLEY OFFICE", GAME_X + 34, GAME_Y + 24, t.textStyles.uiTitle);
-    addText(game, this.isTaskRunning(time) ? "TASK RUNNING" : "WAITING FOR ORDERS", GAME_X + GAME_WIDTH - 214, GAME_Y + 30, {
-      ...t.textStyles.uiTiny,
-      fill: this.isTaskRunning(time) ? t.colors.text.statusActive : t.colors.text.statusWaiting
-    });
-
-    const blink = Math.floor(time * 2) % 2 === 0 ? t.colors.headerBlinkA : t.colors.headerBlinkB;
-    game.rect(GAME_X + GAME_WIDTH - 40, GAME_Y + 28, 12, 12).fill({ color: blink });
-    game.rect(GAME_X + GAME_INSET, GAME_Y + GAME_HEADER_HEIGHT + GAME_INSET, GAME_WIDTH - GAME_INSET * 2, GAME_HEIGHT - GAME_HEADER_HEIGHT - GAME_INSET * 2)
+    game.rect(GAME_X + GAME_INSET, GAME_Y + GAME_INSET, GAME_WIDTH - GAME_INSET * 2, GAME_HEIGHT - GAME_INSET * 2)
       .stroke({ color: t.colors.ui.gameViewportStrokeOuter, width: 5 })
       .stroke({ color: t.colors.ui.gameViewportStrokeInner, width: 2 });
   }
