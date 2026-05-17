@@ -14,6 +14,7 @@
 body {
   margin: 0;
   min-width: 320px;
+  overflow: hidden;
 }
 
 #app {
@@ -22,4 +23,6 @@ body {
 
 canvas {
   display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
 }
